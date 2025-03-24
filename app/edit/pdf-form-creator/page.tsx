@@ -1,64 +1,102 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { FiUpload, FiFile, FiDownload, FiPlus, FiCheck, FiTrash2, FiMenu } from 'react-icons/fi'
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
+import { useState, useRef, useEffect } from 'react'
+import { FiUpload, FiFile, FiDownload, FiPlus, FiCheck, FiTrash2, FiMenu, FiX, FiMove, FiEdit, FiSettings } from 'react-icons/fi'
+import { TbForms, TbCheckbox, TbSelect, TbTextRecognition, TbCursorText } from 'react-icons/tb'
 
-// Form field types
-type FieldType = 'text' | 'checkbox' | 'radio' | 'dropdown'
-
-// Form field interface
+// Define form field types
 interface FormField {
   id: string
-  type: FieldType
-  label: string
-  required: boolean
+  type: 'text' | 'checkbox' | 'dropdown'
   x: number
   y: number
   width: number
   height: number
-  options?: string[] // For radio and dropdown fields
-  page: number
+  label: string
+  required: boolean
+  options?: string[] // For dropdown fields
 }
 
 export default function PdfFormCreatorPage() {
-  const [file, setFile] = useState<File | null>(null)
+  const [baseFile, setBaseFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [fields, setFields] = useState<FormField[]>([])
-  const [currentField, setCurrentField] = useState<FormField | null>(null)
-  const [numPages, setNumPages] = useState<number>(1)
-  const [currentPage, setCurrentPage] = useState<number>(1)
+  
+  // Form fields and editing state
+  const [formFields, setFormFields] = useState<FormField[]>([])
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
+  const [editingField, setEditingField] = useState<FormField | null>(null)
+  const [draggedFieldType, setDraggedFieldType] = useState<string | null>(null)
+  
+  // Form settings
+  const [title, setTitle] = useState<string>('PDF Form')
+  const [pageSize, setPageSize] = useState<string>('a4')
+  const [orientation, setOrientation] = useState<string>('portrait')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
-
-  // Handle file input change
+  const canvasRef = useRef<HTMLDivElement>(null)
+  
+  // Initialize canvas dimensions based on page size and orientation
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 595, height: 842 }) // A4 portrait by default
+  
+  // Update canvas dimensions when page size or orientation changes
+  useEffect(() => {
+    let width, height
+    
+    // Set dimensions based on page size
+    switch (pageSize) {
+      case 'a4':
+        width = 595
+        height = 842
+        break
+      case 'letter':
+        width = 612
+        height = 792
+        break
+      case 'legal':
+        width = 612
+        height = 1008
+        break
+      default:
+        width = 595
+        height = 842 // Default to A4
+    }
+    
+    // Swap dimensions for landscape orientation
+    if (orientation === 'landscape') {
+      [width, height] = [height, width]
+    }
+    
+    setCanvasDimensions({ width, height })
+  }, [pageSize, orientation])
+  
+  // Handle file input change for base file
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0]
       
       // Check if file is a PDF
-      if (selectedFile.type !== 'application/pdf') {
-        setError('Please select a PDF file.')
+      if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
+        setError('Please select a PDF file')
         return
       }
       
-      setFile(selectedFile)
-      setError(null)
+      // Check file size (max 30MB)
+      if (selectedFile.size > 30 * 1024 * 1024) {
+        setError('File size exceeds the maximum limit of 30MB')
+        return
+      }
       
-      // Simulate getting page count from the PDF
-      // In a real implementation, you would use a PDF library to get the actual page count
-      // For this example, we'll set a random number between 1 and 10
-      const mockPageCount = Math.floor(Math.random() * 10) + 1
-      setNumPages(mockPageCount)
-      setCurrentPage(1)
+      setBaseFile(selectedFile)
+      setError(null)
+      setIsComplete(false)
     }
   }
 
-  // Handle drag and drop events
+  // Handle drag and drop events for base file
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
@@ -85,97 +123,211 @@ export default function PdfFormCreatorPage() {
       const selectedFile = e.dataTransfer.files[0]
       
       // Check if file is a PDF
-      if (selectedFile.type !== 'application/pdf') {
-        setError('Please select a PDF file.')
+      if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
+        setError('Please select a PDF file')
         return
       }
       
-      setFile(selectedFile)
+      // Check file size (max 30MB)
+      if (selectedFile.size > 30 * 1024 * 1024) {
+        setError('File size exceeds the maximum limit of 30MB')
+        return
+      }
+      
+      setBaseFile(selectedFile)
+      setError(null)
+      setIsComplete(false)
+    }
+  }
+  
+  // Generate a unique ID
+  const generateId = () => {
+    return Math.random().toString(36).substring(2, 9)
+  }
+  
+  // Handle dragging a field type onto the canvas
+  const handleFieldTypeDragStart = (type: string) => {
+    setDraggedFieldType(type)
+  }
+  
+  const handleCanvasDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (draggedFieldType) {
+      e.dataTransfer.dropEffect = 'copy'
+    }
+  }
+  
+  const handleCanvasDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    if (draggedFieldType && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      
+      // Default field properties
+      const defaultField: FormField = {
+        id: generateId(),
+        type: draggedFieldType as 'text' | 'checkbox' | 'dropdown',
+        x,
+        y,
+        width: draggedFieldType === 'checkbox' ? 20 : 200,
+        height: draggedFieldType === 'checkbox' ? 20 : 30,
+        label: `${draggedFieldType.charAt(0).toUpperCase() + draggedFieldType.slice(1)} Field`,
+        required: false,
+      }
+      
+      // Add default options for dropdown fields
+      if (draggedFieldType === 'dropdown') {
+        defaultField.options = ['Option 1', 'Option 2', 'Option 3']
+      }
+      
+      setFormFields([...formFields, defaultField])
+      setSelectedFieldId(defaultField.id)
+      setEditingField(defaultField)
+      setDraggedFieldType(null)
+    }
+  }
+  
+  // Handle selecting a field
+  const handleSelectField = (field: FormField, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedFieldId(field.id)
+    setEditingField(field)
+  }
+  
+  // Handle field movement
+  const handleFieldMouseDown = (field: FormField, e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    if (!canvasRef.current) return
+    
+    const canvasRect = canvasRef.current.getBoundingClientRect()
+    const startX = e.clientX
+    const startY = e.clientY
+    const startFieldX = field.x
+    const startFieldY = field.y
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const deltaY = moveEvent.clientY - startY
+      
+      // Update the field position
+      const updatedFields = formFields.map(f => {
+        if (f.id === field.id) {
+          // Calculate new position, ensuring the field stays within the canvas
+          const newX = Math.max(0, Math.min(canvasDimensions.width - f.width, startFieldX + deltaX))
+          const newY = Math.max(0, Math.min(canvasDimensions.height - f.height, startFieldY + deltaY))
+          
+          return { ...f, x: newX, y: newY }
+        }
+        return f
+      })
+      
+      setFormFields(updatedFields)
+      
+      // Update editing field if it's the one being moved
+      if (editingField && editingField.id === field.id) {
+        setEditingField({
+          ...editingField,
+          x: Math.max(0, Math.min(canvasDimensions.width - field.width, startFieldX + deltaX)),
+          y: Math.max(0, Math.min(canvasDimensions.height - field.height, startFieldY + deltaY)),
+        })
+      }
+    }
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+  
+  // Update field properties
+  const updateFieldProperty = (property: string, value: any) => {
+    if (!editingField) return
+    
+    // Update the field in the form fields array
+    const updatedFields = formFields.map(field => {
+      if (field.id === editingField.id) {
+        return { ...field, [property]: value }
+      }
+      return field
+    })
+    
+    setFormFields(updatedFields)
+    
+    // Update the editing field
+    setEditingField({
+      ...editingField,
+      [property]: value,
+    })
+  }
+  
+  // Update dropdown options
+  const updateDropdownOptions = (optionsText: string) => {
+    if (!editingField || editingField.type !== 'dropdown') return
+    
+    // Split options by new line and filter out empty ones
+    const options = optionsText.split('\n').filter(opt => opt.trim() !== '')
+    
+    // Update the field in the form fields array
+    const updatedFields = formFields.map(field => {
+      if (field.id === editingField.id) {
+        return { ...field, options }
+      }
+      return field
+    })
+    
+    setFormFields(updatedFields)
+    
+    // Update the editing field
+    setEditingField({
+      ...editingField,
+      options,
+    })
+  }
+  
+  // Delete the selected field
+  const deleteSelectedField = () => {
+    if (!selectedFieldId) return
+    
+    const updatedFields = formFields.filter(field => field.id !== selectedFieldId)
+    setFormFields(updatedFields)
+    setSelectedFieldId(null)
+    setEditingField(null)
+  }
+  
+  // Clear canvas selection when clicking the canvas itself
+  const handleCanvasClick = () => {
+    setSelectedFieldId(null)
+    setEditingField(null)
+  }
+  
+  // Create the PDF form
+  const createPdfForm = async () => {
+    try {
+      setIsProcessing(true)
       setError(null)
       
-      // Simulate getting page count from the PDF
-      const mockPageCount = Math.floor(Math.random() * 10) + 1
-      setNumPages(mockPageCount)
-      setCurrentPage(1)
-    }
-  }
-
-  // Add a new form field
-  const addFormField = (type: FieldType) => {
-    const newField: FormField = {
-      id: `field_${Date.now()}`,
-      type,
-      label: `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
-      required: false,
-      x: 50,
-      y: 50,
-      width: type === 'checkbox' ? 20 : 150,
-      height: type === 'checkbox' ? 20 : 30,
-      page: currentPage,
-      options: (type === 'radio' || type === 'dropdown') ? ['Option 1', 'Option 2', 'Option 3'] : undefined,
-    }
-    
-    setFields([...fields, newField])
-    setCurrentField(newField)
-  }
-
-  // Update a form field
-  const updateField = (id: string, updates: Partial<FormField>) => {
-    const updatedFields = fields.map(field => 
-      field.id === id ? { ...field, ...updates } : field
-    )
-    
-    setFields(updatedFields)
-    
-    if (currentField && currentField.id === id) {
-      setCurrentField({ ...currentField, ...updates })
-    }
-  }
-
-  // Delete a form field
-  const deleteField = (id: string) => {
-    const updatedFields = fields.filter(field => field.id !== id)
-    setFields(updatedFields)
-    
-    if (currentField && currentField.id === id) {
-      setCurrentField(null)
-    }
-  }
-
-  // Handle field reordering
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return
-    
-    const items = Array.from(fields)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
-    
-    setFields(items)
-  }
-
-  // Process the PDF form
-  const processPDF = async () => {
-    if (!file) {
-      setError('Please select a PDF file.')
-      return
-    }
-    
-    if (fields.length === 0) {
-      setError('Please add at least one form field.')
-      return
-    }
-    
-    setIsProcessing(true)
-    setError(null)
-    
-    try {
       // Create form data
       const formData = new FormData()
-      formData.append('pdf', file)
-      formData.append('fields', JSON.stringify(fields))
+      
+      // Add base file if provided
+      if (baseFile) {
+        formData.append('baseFile', baseFile)
+      }
+      
+      // Add form fields, settings
+      formData.append('formFields', JSON.stringify(formFields))
+      formData.append('pageSize', pageSize)
+      formData.append('orientation', orientation)
+      formData.append('title', title)
       
       // Send request to API
-      const response = await fetch('/api/pdf/create-form', {
+      const response = await fetch('/api/pdf/form-creator', {
         method: 'POST',
         body: formData,
       })
@@ -194,7 +346,8 @@ export default function PdfFormCreatorPage() {
       // Set download link
       if (downloadLinkRef.current) {
         downloadLinkRef.current.href = url
-        downloadLinkRef.current.download = file.name.replace('.pdf', '_form.pdf')
+        downloadLinkRef.current.download = 'form.pdf'
+        
         setIsComplete(true)
       }
     } catch (err: any) {
@@ -204,67 +357,219 @@ export default function PdfFormCreatorPage() {
       setIsProcessing(false)
     }
   }
-
+  
   // Reset the form
   const resetForm = () => {
-    setFile(null)
+    setBaseFile(null)
+    setFormFields([])
+    setSelectedFieldId(null)
+    setEditingField(null)
+    setTitle('PDF Form')
+    setPageSize('a4')
+    setOrientation('portrait')
     setIsComplete(false)
     setError(null)
-    setFields([])
-    setCurrentField(null)
-    setNumPages(1)
-    setCurrentPage(1)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
   }
+  
+  // Render form field on canvas
+  const renderFormField = (field: FormField) => {
+    const isSelected = selectedFieldId === field.id
+    
+    // Determine the appearance based on field type
+    let fieldContent
+    
+    switch (field.type) {
+      case 'text':
+        fieldContent = (
+          <div className="flex items-center h-full">
+            <TbTextRecognition className="ml-1 text-gray-400" size={16} />
+            <span className="ml-2 text-gray-400 text-sm truncate">Text Input</span>
+          </div>
+        )
+        break
+      case 'checkbox':
+        fieldContent = (
+          <div className="flex items-center justify-center h-full">
+            <div className="w-3/4 h-3/4 border border-gray-400 rounded-sm"></div>
+          </div>
+        )
+        break
+      case 'dropdown':
+        fieldContent = (
+          <div className="flex items-center justify-between h-full px-2">
+            <span className="text-gray-400 text-sm truncate">
+              {field.options && field.options.length > 0 ? field.options[0] : 'Select...'}
+            </span>
+            <span className="text-gray-400 text-xs">▼</span>
+          </div>
+        )
+        break
+      default:
+        fieldContent = <div className="text-gray-400 text-sm">Field</div>
+    }
+    
+    return (
+      <div
+        key={field.id}
+        className={`absolute border ${isSelected ? 'border-blue-500 bg-blue-50/30' : 'border-gray-300 bg-white'} rounded-sm overflow-hidden`}
+        style={{
+          left: `${field.x}px`,
+          top: `${field.y}px`,
+          width: `${field.width}px`,
+          height: `${field.height}px`,
+          zIndex: isSelected ? 10 : 1,
+        }}
+        onClick={(e) => handleSelectField(field, e)}
+      >
+        {fieldContent}
+        
+        {/* Field label */}
+        <div
+          className="absolute text-xs text-gray-600"
+          style={{
+            bottom: '100%',
+            left: '0',
+            marginBottom: '2px',
+          }}
+        >
+          {field.label}
+          {field.required && <span className="text-red-500 ml-1">*</span>}
+        </div>
+        
+        {/* Move handle for selected field */}
+        {isSelected && (
+          <div
+            className="absolute top-0 right-0 p-1 bg-blue-500 text-white rounded-bl-sm cursor-move"
+            onMouseDown={(e) => handleFieldMouseDown(field, e)}
+          >
+            <FiMove size={12} />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">Create Fillable PDF Form</h1>
+      <h1 className="text-3xl font-bold mb-2">PDF Form Creator</h1>
       <p className="text-gray-600 dark:text-gray-300 mb-6">
-        Add form fields to your PDF document to make it fillable
+        Create fillable PDF forms with text fields, checkboxes, and dropdown menus
       </p>
       
-      {!file ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Select PDF File</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left column - Form Fields */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <TbForms className="mr-2 text-purple-500" size={24} />
+            Form Fields
+          </h2>
           
-          <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center ${
-              isDragging
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'
-            }`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".pdf"
-              onChange={handleFileChange}
-            />
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Drag and drop fields onto the canvas to create your form
+          </p>
+          
+          <div className="space-y-3">
+            <div
+              className="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-grab"
+              draggable
+              onDragStart={() => handleFieldTypeDragStart('text')}
+            >
+              <TbCursorText className="text-purple-500 mr-3" size={20} />
+              <div>
+                <p className="font-medium">Text Field</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">For single or multi-line text input</p>
+              </div>
+            </div>
             
-            <div className="flex flex-col items-center justify-center">
-              <FiUpload className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-3" />
-              <p className="text-gray-600 dark:text-gray-400 mb-2">
-                Drag and drop your PDF file here, or{' '}
+            <div
+              className="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-grab"
+              draggable
+              onDragStart={() => handleFieldTypeDragStart('checkbox')}
+            >
+              <TbCheckbox className="text-green-500 mr-3" size={20} />
+              <div>
+                <p className="font-medium">Checkbox</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">For yes/no or multiple choice selections</p>
+              </div>
+            </div>
+            
+            <div
+              className="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-grab"
+              draggable
+              onDragStart={() => handleFieldTypeDragStart('dropdown')}
+            >
+              <TbSelect className="text-blue-500 mr-3" size={20} />
+              <div>
+                <p className="font-medium">Dropdown</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">For selecting from a list of options</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Base PDF upload */}
+          <div className="mt-8">
+            <h3 className="font-medium mb-2">Base PDF (Optional)</h3>
+            
+            {!baseFile ? (
+              <div
+                className={`border-2 border-dashed rounded-lg p-4 text-center ${
+                  isDragging
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                />
+                
+                <div className="flex flex-col items-center justify-center">
+                  <FiUpload className="w-10 h-10 text-gray-400 dark:text-gray-500 mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    Drag and drop a PDF, or{' '}
+                    <button
+                      type="button"
+                      className="text-purple-600 dark:text-purple-400 font-medium hover:underline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      browse
+                    </button>
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-600">
+                    Optional: Add form fields to an existing PDF
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+                <div className="flex items-center justify-center w-8 h-8 bg-purple-100 dark:bg-purple-800/30 text-purple-600 dark:text-purple-400 rounded-full">
+                  <FiFile size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{baseFile.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {(baseFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
                 <button
                   type="button"
-                  className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
-                  onClick={() => fileInputRef.current?.click()}
+                  className="p-1 rounded-full text-gray-500 hover:text-red-500"
+                  onClick={() => setBaseFile(null)}
                 >
-                  browse files
+                  <FiX size={16} />
                 </button>
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-600">
-                Maximum file size: 15MB
-              </p>
-            </div>
+              </div>
+            )}
           </div>
           
           {error && (
@@ -273,331 +578,224 @@ export default function PdfFormCreatorPage() {
             </div>
           )}
         </div>
-      ) : !isComplete ? (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left column - PDF preview */}
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h2 className="font-semibold">PDF Preview - Page {currentPage} of {numPages}</h2>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    className="px-2 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    className="px-2 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
-                    disabled={currentPage === numPages}
-                    onClick={() => setCurrentPage(prev => Math.min(numPages, prev + 1))}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-              
-              <div className="relative h-[600px] bg-gray-100 dark:bg-gray-900 p-4 overflow-auto">
-                {/* This would be a real PDF preview in a complete implementation */}
-                <div className="bg-white dark:bg-gray-800 shadow-md mx-auto w-[595px] h-[842px] relative">
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
-                    <p>PDF Preview (Page {currentPage})</p>
-                  </div>
-                  <div className="absolute inset-0">
-                    {fields
-                      .filter(field => field.page === currentPage)
-                      .map(field => (
-                        <div
-                          key={field.id}
-                          className={`absolute border-2 ${
-                            currentField?.id === field.id 
-                              ? 'border-blue-500 bg-blue-100/50 dark:bg-blue-900/30' 
-                              : 'border-gray-400 bg-gray-100/50 dark:bg-gray-800/50'
-                          } rounded cursor-move`}
-                          style={{
-                            left: `${field.x}px`,
-                            top: `${field.y}px`,
-                            width: `${field.width}px`,
-                            height: `${field.height}px`,
-                          }}
-                          onClick={() => setCurrentField(field)}
-                        >
-                          <div className="absolute -top-6 left-0 text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">
-                            {field.label}
-                          </div>
-                          <div className="h-full flex items-center justify-center">
-                            {field.type === 'checkbox' && (
-                              <div className="w-4 h-4 border border-gray-400 rounded"></div>
-                            )}
-                            {field.type === 'radio' && (
-                              <div className="w-4 h-4 border border-gray-400 rounded-full"></div>
-                            )}
-                            {field.type === 'text' && (
-                              <div className="w-full h-full border-b border-gray-400"></div>
-                            )}
-                            {field.type === 'dropdown' && (
-                              <div className="w-full h-full flex items-center">
-                                <span className="text-xs text-gray-500">▼ Dropdown</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+        
+        {/* Middle column - Canvas */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center">
+              <FiEdit className="mr-2 text-gray-500" size={24} />
+              Form Layout
+            </h2>
             
-            {/* Right column - Form fields */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="font-semibold">Form Fields</h2>
-              </div>
+            <div className="flex space-x-2">
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(e.target.value)}
+                className="text-sm border border-gray-300 rounded p-1"
+              >
+                <option value="a4">A4</option>
+                <option value="letter">Letter</option>
+                <option value="legal">Legal</option>
+              </select>
               
-              <div className="p-4">
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm font-medium flex items-center"
-                    onClick={() => addFormField('text')}
-                  >
-                    <FiPlus className="mr-1" /> Text Field
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm font-medium flex items-center"
-                    onClick={() => addFormField('checkbox')}
-                  >
-                    <FiPlus className="mr-1" /> Checkbox
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm font-medium flex items-center"
-                    onClick={() => addFormField('radio')}
-                  >
-                    <FiPlus className="mr-1" /> Radio Button
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm font-medium flex items-center"
-                    onClick={() => addFormField('dropdown')}
-                  >
-                    <FiPlus className="mr-1" /> Dropdown
-                  </button>
-                </div>
-                
-                <hr className="my-4 border-gray-200 dark:border-gray-700" />
-                
-                {fields.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <p>No form fields added yet.</p>
-                    <p className="text-sm">Click one of the buttons above to add a field.</p>
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="font-medium mb-2">All Fields:</h3>
-                    <DragDropContext onDragEnd={handleDragEnd}>
-                      <Droppable droppableId="fields">
-                        {(provided) => (
-                          <ul
-                            className="space-y-2"
-                            {...provided.droppableProps}
-                            ref={provided.innerRef}
-                          >
-                            {fields.map((field, index) => (
-                              <Draggable key={field.id} draggableId={field.id} index={index}>
-                                {(provided) => (
-                                  <li
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    className={`p-2 rounded-md border ${
-                                      currentField?.id === field.id 
-                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                                        : 'border-gray-200 dark:border-gray-700'
-                                    }`}
-                                    onClick={() => setCurrentField(field)}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center">
-                                        <div {...provided.dragHandleProps} className="mr-2 cursor-move">
-                                          <FiMenu size={14} />
-                                        </div>
-                                        <div>
-                                          <div className="font-medium text-sm">{field.label}</div>
-                                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {field.type} • Page {field.page}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          deleteField(field.id)
-                                        }}
-                                      >
-                                        <FiTrash2 size={16} />
-                                      </button>
-                                    </div>
-                                  </li>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                          </ul>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
-                  </>
-                )}
-                
-                {currentField && (
-                  <div className="mt-6">
-                    <h3 className="font-medium mb-3">Edit Field Properties:</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Label</label>
-                        <input
-                          type="text"
-                          value={currentField.label}
-                          onChange={(e) => updateField(currentField.id, { label: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Page</label>
-                        <select
-                          value={currentField.page}
-                          onChange={(e) => updateField(currentField.id, { page: parseInt(e.target.value) })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                        >
-                          {Array.from({ length: numPages }, (_, i) => i + 1).map(page => (
-                            <option key={page} value={page}>
-                              Page {page}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="flex gap-4">
-                        <div className="w-1/2">
-                          <label className="block text-sm font-medium mb-1">X Position</label>
-                          <input
-                            type="number"
-                            value={currentField.x}
-                            onChange={(e) => updateField(currentField.id, { x: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                          />
-                        </div>
-                        <div className="w-1/2">
-                          <label className="block text-sm font-medium mb-1">Y Position</label>
-                          <input
-                            type="number"
-                            value={currentField.y}
-                            onChange={(e) => updateField(currentField.id, { y: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-4">
-                        <div className="w-1/2">
-                          <label className="block text-sm font-medium mb-1">Width</label>
-                          <input
-                            type="number"
-                            value={currentField.width}
-                            onChange={(e) => updateField(currentField.id, { width: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                          />
-                        </div>
-                        <div className="w-1/2">
-                          <label className="block text-sm font-medium mb-1">Height</label>
-                          <input
-                            type="number"
-                            value={currentField.height}
-                            onChange={(e) => updateField(currentField.id, { height: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="required-checkbox"
-                          checked={currentField.required}
-                          onChange={(e) => updateField(currentField.id, { required: e.target.checked })}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        />
-                        <label htmlFor="required-checkbox" className="ml-2 text-sm font-medium">
-                          Required field
-                        </label>
-                      </div>
-                      
-                      {(currentField.type === 'radio' || currentField.type === 'dropdown') && (
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Options</label>
-                          <div className="space-y-2">
-                            {currentField.options?.map((option, index) => (
-                              <div key={index} className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={option}
-                                  onChange={(e) => {
-                                    const newOptions = [...(currentField.options || [])];
-                                    newOptions[index] = e.target.value;
-                                    updateField(currentField.id, { options: newOptions });
-                                  }}
-                                  className="flex-1 px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                                />
-                                <button
-                                  type="button"
-                                  className="text-red-500 dark:text-red-400"
-                                  onClick={() => {
-                                    const newOptions = [...(currentField.options || [])];
-                                    newOptions.splice(index, 1);
-                                    updateField(currentField.id, { options: newOptions });
-                                  }}
-                                >
-                                  <FiTrash2 size={14} />
-                                </button>
-                              </div>
-                            ))}
-                            <button
-                              type="button"
-                              className="text-sm text-blue-600 dark:text-blue-400 flex items-center"
-                              onClick={() => {
-                                const newOptions = [...(currentField.options || []), `Option ${(currentField.options?.length || 0) + 1}`];
-                                updateField(currentField.id, { options: newOptions });
-                              }}
-                            >
-                              <FiPlus className="mr-1" /> Add Option
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <select
+                value={orientation}
+                onChange={(e) => setOrientation(e.target.value)}
+                className="text-sm border border-gray-300 rounded p-1"
+              >
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
             </div>
           </div>
           
-          <div className="mt-8 flex justify-end">
+          <div className="mb-3">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Form Title"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-lg font-medium"
+            />
+          </div>
+          
+          {/* Canvas area */}
+          <div
+            ref={canvasRef}
+            className="border border-gray-300 bg-white rounded overflow-auto relative"
+            style={{
+              width: '100%',
+              height: '500px',
+              maxHeight: '500px',
+            }}
+            onClick={handleCanvasClick}
+            onDragOver={handleCanvasDragOver}
+            onDrop={handleCanvasDrop}
+          >
+            {/* Form fields rendered on canvas */}
+            {formFields.map(field => renderFormField(field))}
+            
+            {/* Empty state */}
+            {formFields.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400 pointer-events-none">
+                <div className="text-center">
+                  <FiPlus size={32} className="mx-auto mb-2" />
+                  <p>Drag form fields here</p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-4 flex justify-end">
             <button
               type="button"
-              className={`py-2 px-6 rounded-lg font-medium flex items-center ${
-                isProcessing || fields.length === 0
-                  ? 'bg-blue-400 dark:bg-blue-500 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+              className="text-sm text-red-500 flex items-center disabled:opacity-50"
+              onClick={deleteSelectedField}
+              disabled={!selectedFieldId}
+            >
+              <FiTrash2 className="mr-1" size={16} />
+              Delete Selected Field
+            </button>
+          </div>
+        </div>
+        
+        {/* Right column - Field Properties */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <div className="flex items-center mb-4">
+            <FiSettings className="mr-2 text-gray-500" />
+            <h2 className="text-xl font-semibold">Field Properties</h2>
+          </div>
+          
+          {editingField ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Field Type
+                </label>
+                <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-md text-sm">
+                  {editingField.type.charAt(0).toUpperCase() + editingField.type.slice(1)}
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="fieldLabel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Label
+                </label>
+                <input
+                  type="text"
+                  id="fieldLabel"
+                  value={editingField.label}
+                  onChange={(e) => updateFieldProperty('label', e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md"
+                />
+              </div>
+              
+              <div className="flex items-center">
+                <input
+                  id="requiredField"
+                  type="checkbox"
+                  checked={editingField.required}
+                  onChange={(e) => updateFieldProperty('required', e.target.checked)}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <label htmlFor="requiredField" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                  Required field
+                </label>
+              </div>
+              
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <label htmlFor="fieldWidth" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Width (px)
+                  </label>
+                  <input
+                    type="number"
+                    id="fieldWidth"
+                    value={editingField.width}
+                    onChange={(e) => updateFieldProperty('width', Math.max(20, parseInt(e.target.value)))}
+                    min="20"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md"
+                  />
+                </div>
+                
+                <div className="flex-1">
+                  <label htmlFor="fieldHeight" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Height (px)
+                  </label>
+                  <input
+                    type="number"
+                    id="fieldHeight"
+                    value={editingField.height}
+                    onChange={(e) => updateFieldProperty('height', Math.max(20, parseInt(e.target.value)))}
+                    min="20"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <label htmlFor="fieldX" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    X Position
+                  </label>
+                  <input
+                    type="number"
+                    id="fieldX"
+                    value={Math.round(editingField.x)}
+                    onChange={(e) => updateFieldProperty('x', Math.max(0, parseInt(e.target.value)))}
+                    min="0"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md"
+                  />
+                </div>
+                
+                <div className="flex-1">
+                  <label htmlFor="fieldY" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Y Position
+                  </label>
+                  <input
+                    type="number"
+                    id="fieldY"
+                    value={Math.round(editingField.y)}
+                    onChange={(e) => updateFieldProperty('y', Math.max(0, parseInt(e.target.value)))}
+                    min="0"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md"
+                  />
+                </div>
+              </div>
+              
+              {/* Dropdown options */}
+              {editingField.type === 'dropdown' && (
+                <div>
+                  <label htmlFor="dropdownOptions" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Options (one per line)
+                  </label>
+                  <textarea
+                    id="dropdownOptions"
+                    value={(editingField.options || []).join('\n')}
+                    onChange={(e) => updateDropdownOptions(e.target.value)}
+                    rows={4}
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md"
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <FiEdit size={32} className="mx-auto mb-2" />
+              <p>Select a field to edit its properties</p>
+            </div>
+          )}
+          
+          <div className="mt-8">
+            <button
+              type="button"
+              className={`w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center ${
+                isProcessing
+                  ? 'bg-purple-400 dark:bg-purple-600 cursor-not-allowed'
+                  : 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600'
               } text-white`}
-              onClick={processPDF}
-              disabled={isProcessing || fields.length === 0}
+              onClick={createPdfForm}
+              disabled={isProcessing}
             >
               {isProcessing ? (
                 <>
@@ -605,41 +803,42 @@ export default function PdfFormCreatorPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Processing...
+                  Creating PDF Form...
                 </>
               ) : (
-                'Create Fillable PDF'
+                <>
+                  <FiFile className="mr-2" size={18} />
+                  Create PDF Form
+                </>
               )}
             </button>
           </div>
-        </>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 animate-fadeIn">
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full mx-auto flex items-center justify-center mb-4">
-              <FiCheck className="w-8 h-8 text-green-600 dark:text-green-400" />
+        </div>
+      </div>
+      
+      {/* Results section */}
+      {isComplete && (
+        <div className="mt-8 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 animate-fadeIn">
+          <div className="flex items-center mb-4">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-400 mr-3">
+              <FiCheck size={24} />
             </div>
-            <h2 className="text-2xl font-bold mb-2">PDF Form Created Successfully!</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Your PDF now has fillable form fields
-            </p>
-            
-            <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <a
-                ref={downloadLinkRef}
-                className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <FiDownload className="mr-2" />
-                Download Fillable PDF
-              </a>
-              
-              <button
-                onClick={resetForm}
-                className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-700 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Create Another Form
-              </button>
-            </div>
+            <h2 className="text-xl font-semibold text-green-800 dark:text-green-400">Form Created Successfully</h2>
+          </div>
+          
+          <p className="text-green-700 dark:text-green-300 mb-4">
+            Your PDF form has been created with {formFields.length} form {formFields.length === 1 ? 'field' : 'fields'}.
+            You can now download the PDF form.
+          </p>
+          
+          <div className="flex items-center justify-end">
+            <a
+              ref={downloadLinkRef}
+              className="py-2 px-6 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white rounded-lg font-medium flex items-center"
+            >
+              <FiDownload className="mr-2" />
+              Download PDF Form
+            </a>
           </div>
         </div>
       )}
