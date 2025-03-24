@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { FiArrowLeft, FiUpload, FiDownload, FiCheckCircle } from 'react-icons/fi'
+import { FiArrowLeft, FiUpload, FiDownload, FiCheckCircle, FiFileText } from 'react-icons/fi'
 import { toolConfigData, ToolConfig } from '@/app/data/toolConfigData'
 
 interface ToolPageProps {
@@ -14,6 +14,8 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
   const [files, setFiles] = useState<File[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [processedFiles, setProcessedFiles] = useState<{ name: string, url: string }[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Get tool configuration if it exists
   const toolConfig = toolConfigData[toolId] || {
@@ -35,6 +37,8 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
       });
       
       setFiles(validFiles);
+      setIsComplete(false);
+      setProcessedFiles([]);
       
       // If some files were filtered out, show alert
       if (validFiles.length < selectedFiles.length) {
@@ -47,11 +51,74 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
     if (files.length === 0) return;
     
     setIsProcessing(true);
-    // Simulate processing
-    setTimeout(() => {
+    
+    // Simulate processing with progress
+    const processFiles = async () => {
+      const results = [];
+      
+      for (const file of files) {
+        // Create a processed file with a new name
+        const fileExt = toolConfig.outputFormat;
+        const fileName = file.name.split('.')[0];
+        const newFileName = `${fileName}${fileExt}`;
+        
+        // Create a URL for the file (in a real app, this would be the actual processed file)
+        // Here we're just using the original file as a demo
+        const objectUrl = URL.createObjectURL(file);
+        
+        results.push({
+          name: newFileName,
+          url: objectUrl
+        });
+        
+        // Small delay to simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      setProcessedFiles(results);
       setIsProcessing(false);
       setIsComplete(true);
-    }, 2000);
+    };
+    
+    processFiles();
+  }
+  
+  const handleDownload = (url: string, filename: string) => {
+    // Create a link element
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    
+    // Trigger the download
+    a.click();
+    
+    // Clean up
+    document.body.removeChild(a);
+  }
+  
+  const handleDownloadAll = () => {
+    // Download each file with a small delay between downloads
+    processedFiles.forEach((file, index) => {
+      setTimeout(() => {
+        handleDownload(file.url, file.name);
+      }, index * 500);
+    });
+  }
+  
+  const handleReset = () => {
+    // Clean up any object URLs to avoid memory leaks
+    processedFiles.forEach(file => URL.revokeObjectURL(file.url));
+    
+    // Reset the state
+    setFiles([]);
+    setIsComplete(false);
+    setProcessedFiles([]);
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }
 
   return (
@@ -95,6 +162,7 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
                     onChange={handleFileChange}
                     multiple 
                     accept={toolConfig.acceptedFiles.join(',')}
+                    ref={fileInputRef}
                   />
                 </label>
               </div>
@@ -104,14 +172,53 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
                   <FiDownload size={32} />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Conversion Complete!
+                  Processing Complete!
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                  Your file is ready to download as {toolConfig.outputFormat}
-                </p>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
-                  Download
-                </button>
+                
+                {processedFiles.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-gray-600 dark:text-gray-400 mb-3">
+                      {processedFiles.length} {processedFiles.length === 1 ? 'file' : 'files'} ready to download
+                    </p>
+                    
+                    <div className="bg-gray-50 dark:bg-gray-750 rounded-lg p-4 mb-6 max-w-md mx-auto text-left">
+                      {processedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                          <div className="flex items-center">
+                            <div className="mr-3 text-blue-500 dark:text-blue-400">
+                              <FiFileText size={18} />
+                            </div>
+                            <span className="text-gray-900 dark:text-white font-medium truncate max-w-[200px]">
+                              {file.name}
+                            </span>
+                          </div>
+                          <button 
+                            onClick={() => handleDownload(file.url, file.name)}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                          >
+                            <FiDownload size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button 
+                    onClick={handleDownloadAll}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                  >
+                    Download All
+                  </button>
+                  
+                  <button 
+                    onClick={handleReset}
+                    className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                  >
+                    Process Another File
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="py-6">
@@ -136,7 +243,15 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
                   onClick={handleProcess}
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Processing...' : 'Process Files'}
+                  {isProcessing ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : 'Process Files'}
                 </button>
               </div>
             )}
