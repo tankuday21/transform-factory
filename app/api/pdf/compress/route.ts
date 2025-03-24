@@ -18,7 +18,7 @@ const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields;
   return new Promise((resolve, reject) => {
     const form = new formidable.IncomingForm({
       multiples: true,
-      maxFileSize: 50 * 1024 * 1024, // 50MB for larger PDFs
+      maxFileSize: 50 * 1024 * 1024, // 50MB
     });
 
     req.arrayBuffer().then((arrayBuffer) => {
@@ -58,11 +58,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get compression level
-    const compressionLevel = fields.compressionLevel ? 
-      (Array.isArray(fields.compressionLevel) ? fields.compressionLevel[0] : fields.compressionLevel as string) : 
+    // Get compression options
+    const quality = fields.quality ? 
+      (Array.isArray(fields.quality) ? fields.quality[0] : fields.quality as string) : 
       'medium';
-
+    
+    // Calculate compression level based on quality setting
+    let compressionFactor = 0.7; // default medium compression
+    if (quality === 'low') {
+      compressionFactor = 0.5; // more compression, lower quality
+    } else if (quality === 'high') {
+      compressionFactor = 0.9; // less compression, higher quality
+    }
+    
     // Read file as buffer
     const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
       const buffer = Buffer.alloc(pdfFile.size);
@@ -83,55 +91,42 @@ export async function POST(req: NextRequest) {
       });
     });
     
-    // Original file size for comparison
-    const originalSize = fileBuffer.length;
-    
     // Load the PDF document
     const pdfDoc = await PDFDocument.load(fileBuffer);
     
-    // Apply compression strategy based on selected level
-    const compressOptions: {
-      [key: string]: {
-        useObjectStreams: boolean;
-        objectsPerStream?: number;
-        useStreamCompression?: boolean;
-      }
-    } = {
-      low: {
-        useObjectStreams: true,
-        objectsPerStream: 50,
-        useStreamCompression: true,
-      },
-      medium: {
-        useObjectStreams: true,
-        objectsPerStream: 100,
-        useStreamCompression: true,
-      },
-      high: {
-        useObjectStreams: true,
-        objectsPerStream: 200,
-        useStreamCompression: true,
-      }
-    };
+    // Get original file size for comparison
+    const originalSize = fileBuffer.length;
     
-    // Apply compression options
-    const options = compressOptions[compressionLevel] || compressOptions.medium;
+    // This is a simplified compression approach since pdf-lib doesn't have direct compression controls
+    // We'll create a new PDF document and copy pages with potentially compressed resources
+    const compressedPdf = await PDFDocument.create();
     
-    // Save the PDF with compression options
-    const pdfBytes = await pdfDoc.save(options);
+    // Copy pages from original document
+    const pages = await compressedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+    pages.forEach((page) => {
+      compressedPdf.addPage(page);
+    });
     
-    // Calculate compression ratio for response headers
-    const newSize = pdfBytes.length;
-    const compressionRatio = ((originalSize - newSize) / originalSize * 100).toFixed(2);
+    // Save the PDF with options that may help with compression
+    const compressedBytes = await compressedPdf.save({
+      useObjectStreams: true, // This can help reduce file size
+      addDefaultPage: false,
+    });
     
-    // Return the compressed PDF
-    return new NextResponse(pdfBytes, {
+    // Get compressed file size
+    const compressedSize = compressedBytes.length;
+    
+    // Calculate compression percentage
+    const savingsPercent = Math.round((1 - (compressedSize / originalSize)) * 100);
+    
+    // Return the compressed PDF and metadata
+    return new NextResponse(compressedBytes, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="compressed.pdf"`,
-        'X-Compression-Ratio': compressionRatio,
         'X-Original-Size': originalSize.toString(),
-        'X-New-Size': newSize.toString(),
+        'X-Compressed-Size': compressedSize.toString(),
+        'X-Savings-Percent': savingsPercent.toString(),
       },
     });
   } catch (error) {
