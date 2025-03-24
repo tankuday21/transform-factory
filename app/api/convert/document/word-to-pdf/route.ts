@@ -4,11 +4,9 @@ import path from 'path';
 import os from 'os';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Modern Next.js App Router configuration
+export const dynamic = 'force-dynamic';
+export const bodyStream = true;
 
 // Parse form data
 async function parseForm(req: NextRequest) {

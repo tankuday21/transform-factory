@@ -7,12 +7,9 @@ import os from 'os';
 import { exec } from 'child_process';
 import util from 'util';
 
-// Disable body parser, we'll handle the form data manually
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Modern Next.js App Router configuration
+export const dynamic = 'force-dynamic';
+export const bodyStream = true;
 
 const execPromise = util.promisify(exec);
 

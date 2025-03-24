@@ -13,12 +13,9 @@ if (typeof window === 'undefined') {
   pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
 
-// Disable body parser, we'll handle the form data manually
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Modern Next.js App Router configuration
+export const dynamic = 'force-dynamic';
+export const bodyStream = true;
 
 // Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {

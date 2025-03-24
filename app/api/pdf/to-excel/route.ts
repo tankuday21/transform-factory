@@ -6,12 +6,9 @@ import os from 'os';
 import { execSync } from 'child_process';
 import * as XLSX from 'xlsx';
 
-// Disable body parser, we'll handle the form data manually
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Modern Next.js App Router configuration
+export const dynamic = 'force-dynamic';
+export const bodyStream = true;
 
 // Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {
