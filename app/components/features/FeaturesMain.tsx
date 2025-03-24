@@ -1,21 +1,38 @@
 'use client'
 
 import { useState } from 'react'
-import { pdfFeatures, getAllTools } from '@/app/data/features'
+import { pdfFeatures, getAllTools, getCategoryById } from '@/app/data/features'
 import FeatureGrid from './FeatureGrid'
 import CategorySection from './CategorySection'
 import { FiGrid, FiList, FiCompass } from 'react-icons/fi'
 
-const FeaturesMain = () => {
+interface FeaturesMainProps {
+  initialCategory?: string;
+}
+
+const FeaturesMain = ({ initialCategory }: FeaturesMainProps = {}) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'categories'>('categories')
+  
+  // Filter features by category if initialCategory is provided
+  const featuresData = initialCategory 
+    ? [getCategoryById(initialCategory)].filter(Boolean) as typeof pdfFeatures
+    : pdfFeatures;
   
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">PDF Tools</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {initialCategory 
+              ? getCategoryById(initialCategory)?.title || 'PDF Tools'
+              : 'PDF Tools'
+            }
+          </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Transform and manage your PDFs with our powerful tools
+            {initialCategory
+              ? getCategoryById(initialCategory)?.description || 'Transform and manage your PDFs with our powerful tools'
+              : 'Transform and manage your PDFs with our powerful tools'
+            }
           </p>
         </div>
         
@@ -58,13 +75,19 @@ const FeaturesMain = () => {
 
       {/* Show Feature Grid for Grid and List views */}
       {(viewMode === 'grid' || viewMode === 'list') && (
-        <FeatureGrid viewMode={viewMode} initialTools={getAllTools()} />
+        <FeatureGrid 
+          viewMode={viewMode} 
+          initialTools={initialCategory 
+            ? getCategoryById(initialCategory)?.tools || [] 
+            : getAllTools()
+          } 
+        />
       )}
 
       {/* Show Categories view */}
       {viewMode === 'categories' && (
         <div className="space-y-8 animate-fadeIn">
-          {pdfFeatures.map((category) => (
+          {featuresData.map((category) => (
             <CategorySection key={category.id} category={category} />
           ))}
         </div>
