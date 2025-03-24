@@ -50,7 +50,11 @@ export async function POST(request: NextRequest) {
         sharpInstance = sharpInstance.gif()
         break
       case 'bmp':
-        sharpInstance = sharpInstance.bmp()
+        // Sharp doesn't have a direct bmp() method
+        // Convert to PNG instead as BMP is not directly supported
+        sharpInstance = sharpInstance.png()
+        // Note: In a real app, you might use a different library or approach for BMP conversion
+        console.warn('BMP format requested but not directly supported by Sharp - using PNG instead')
         break
       default:
         throw new Error(`Unsupported output format: ${outputFormat}`)
