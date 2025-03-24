@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CategoryFeature } from '@/app/data/features'
 import FeatureCard from './FeatureCard'
 import * as FiIcons from 'react-icons/fi'
@@ -12,11 +12,29 @@ interface CategorySectionProps {
 
 const CategorySection = ({ category }: CategorySectionProps) => {
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  
+  // Use useEffect to safely check document on client side
+  useEffect(() => {
+    setIsDarkMode(document.documentElement.getAttribute('data-theme') === 'dark')
+    
+    // Add a listener to update when theme changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          setIsDarkMode(document.documentElement.getAttribute('data-theme') === 'dark')
+        }
+      })
+    })
+    
+    observer.observe(document.documentElement, { attributes: true })
+    
+    return () => observer.disconnect()
+  }, [])
   
   // Get the gradient class for the category
   const getCategoryGradient = () => {
-    const darkMode = document.documentElement.getAttribute('data-theme') === 'dark'
-    return `bg-gradient-to-r ${darkMode ? category.colorDark : category.color}`
+    return `bg-gradient-to-r ${isDarkMode ? category.colorDark : category.color}`
   }
   
   // Dynamically render icon based on icon name
