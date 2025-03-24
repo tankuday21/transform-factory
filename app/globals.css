@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+  }
+
+  .btn-outline {
+    @apply border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500;
+  }
+
+  .file-upload-area {
+    @apply flex flex-col items-center justify-center w-full h-64 px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors;
+  }
+  
+  .file-upload-area.active {
+    @apply border-primary-500 bg-primary-50;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .hover-elevate:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .hover-elevate:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Staggered grid animation */
+.stagger-grid > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: staggeredFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes staggeredFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-grid > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-grid > *:nth-child(2) { animation-delay: 0.15s; }
+.stagger-grid > *:nth-child(3) { animation-delay: 0.2s; }
+.stagger-grid > *:nth-child(4) { animation-delay: 0.25s; }
+.stagger-grid > *:nth-child(5) { animation-delay: 0.3s; }
+.stagger-grid > *:nth-child(6) { animation-delay: 0.35s; }
+.stagger-grid > *:nth-child(7) { animation-delay: 0.4s; }
+.stagger-grid > *:nth-child(8) { animation-delay: 0.45s; }
+.stagger-grid > *:nth-child(9) { animation-delay: 0.5s; }
+.stagger-grid > *:nth-child(10) { animation-delay: 0.55s; }
+.stagger-grid > *:nth-child(11) { animation-delay: 0.6s; }
+.stagger-grid > *:nth-child(12) { animation-delay: 0.65s; } 
