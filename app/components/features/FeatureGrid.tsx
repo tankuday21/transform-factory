@@ -8,16 +8,22 @@ import { FiSearch, FiFilter, FiArrowUp, FiArrowDown } from 'react-icons/fi'
 interface FeatureGridProps {
   viewMode: 'grid' | 'list' | 'categories'
   initialTools: Tool[]
+  searchQuery?: string
 }
 
-const FeatureGrid = ({ viewMode, initialTools }: FeatureGridProps) => {
-  const [searchQuery, setSearchQuery] = useState('')
+const FeatureGrid = ({ viewMode, initialTools, searchQuery = '' }: FeatureGridProps) => {
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery)
   const [sortOption, setSortOption] = useState<'alphabetical' | 'popular' | 'newest'>('popular')
   const [tools, setTools] = useState<Tool[]>(initialTools)
   
+  // Update local search query when prop changes
+  useEffect(() => {
+    setLocalSearchQuery(searchQuery)
+  }, [searchQuery])
+  
   // Filter tools based on search query
   const filteredTools = tools.filter(tool => {
-    const searchLower = searchQuery.toLowerCase()
+    const searchLower = localSearchQuery.toLowerCase()
     return (
       tool.name.toLowerCase().includes(searchLower) ||
       tool.description.toLowerCase().includes(searchLower) ||
@@ -52,8 +58,8 @@ const FeatureGrid = ({ viewMode, initialTools }: FeatureGridProps) => {
           <input
             type="text"
             placeholder="Search tools..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={localSearchQuery}
+            onChange={(e) => setLocalSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
           />
         </div>
@@ -106,7 +112,7 @@ const FeatureGrid = ({ viewMode, initialTools }: FeatureGridProps) => {
       {/* Results summary */}
       <div className="mb-4 text-gray-600 dark:text-gray-400">
         {sortedTools.length === 0 ? (
-          <p>No tools found matching "{searchQuery}"</p>
+          <p>No tools found matching "{localSearchQuery}"</p>
         ) : (
           <p>Showing {sortedTools.length} of {tools.length} tools</p>
         )}
@@ -135,7 +141,7 @@ const FeatureGrid = ({ viewMode, initialTools }: FeatureGridProps) => {
           </div>
           <h3 className="text-xl font-medium text-gray-700 dark:text-gray-300 mb-2">No tools found</h3>
           <p className="text-gray-500 dark:text-gray-400 max-w-md">
-            We couldn't find any tools matching "{searchQuery}". Try a different search term or browse by category.
+            We couldn't find any tools matching "{localSearchQuery}". Try a different search term or browse by category.
           </p>
         </div>
       )}
