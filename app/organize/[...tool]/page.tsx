@@ -5,7 +5,9 @@ import ToolPage from '@/app/components/ToolPage'
 
 export default function OrganizeToolPage() {
   const params = useParams()
-  const toolId = Array.isArray(params.tool) ? params.tool.join('-') : params.tool
+  // Access the tool parameter directly if it's a string,
+  // or join it with hyphens if it's an array (catch-all route)
+  const toolId = Array.isArray(params.tool) ? params.tool.join('-') : params.tool as string
 
   return <ToolPage toolId={toolId} category="organize" />
 } 

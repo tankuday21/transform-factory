@@ -32,7 +32,7 @@ const FeatureCard = ({ feature, viewMode }: FeatureCardProps) => {
 
   if (isGrid) {
     return (
-      <Link href={feature.path} className="group">
+      <Link href={`/${feature.category}/${encodeURIComponent(feature.id)}`} className="group">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover-elevate h-full">
           <div className="p-6">
             <div className="flex justify-between items-start mb-4">
@@ -67,7 +67,7 @@ const FeatureCard = ({ feature, viewMode }: FeatureCardProps) => {
   } else {
     // List view
     return (
-      <Link href={feature.path} className="group">
+      <Link href={`/${feature.category}/${encodeURIComponent(feature.id)}`} className="group">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:bg-gray-50 dark:hover:bg-gray-750">
           <div className="p-4 flex items-center">
             <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg ${iconColorClass} transition-colors duration-300 mr-4 text-lg`}>
