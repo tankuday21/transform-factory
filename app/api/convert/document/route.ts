@@ -47,17 +47,15 @@ export async function POST(request: NextRequest) {
       const pages = pdfDoc.getPages()
       
       // Simple extraction (basic text only)
-      const doc = new Document()
-      
-      // Extract text from PDF (simplified)
-      // In a real app, this would be more sophisticated with better text extraction
-      doc.addSection({
-        properties: {},
-        children: [
-          new Paragraph({
-            text: `Converted from PDF (${pages.length} pages)`,
-          }),
-        ],
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({
+              text: `Converted from PDF (${pages.length} pages)`,
+            }),
+          ],
+        }],
       })
       
       convertedFileBuffer = await Packer.toBuffer(doc)
@@ -73,7 +71,8 @@ export async function POST(request: NextRequest) {
         y: page.getHeight() - 50,
       })
       
-      convertedFileBuffer = await pdfDoc.save()
+      const pdfBytes = await pdfDoc.save()
+      convertedFileBuffer = Buffer.from(pdfBytes)
       contentType = 'application/pdf'
     }
     else if ((inputFormat === 'xlsx' || inputFormat === 'xls') && outputFormat === 'csv') {
@@ -89,10 +88,13 @@ export async function POST(request: NextRequest) {
       // CSV to Excel
       const workbook = XLSX.utils.book_new()
       const csvData = buffer.toString('utf8')
-      const worksheet = XLSX.utils.csv_to_sheet(csvData)
+      // Parse the CSV data properly
+      const rows = csvData.split('\n').map(row => row.split(','))
+      const worksheet = XLSX.utils.aoa_to_sheet(rows)
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1')
       
-      convertedFileBuffer = Buffer.from(XLSX.write(workbook, { type: 'buffer', bookType: outputFormat }))
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: outputFormat })
+      convertedFileBuffer = Buffer.from(excelBuffer)
       contentType = outputFormat === 'xlsx' 
         ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         : 'application/vnd.ms-excel'
