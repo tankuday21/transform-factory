@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
 import { useState, useRef } from 'react';
 import { FiUpload, FiFile, FiDownload, FiSettings, FiTrash2, FiCheck } from 'react-icons/fi';
 
-export default function PdfToWordPage() {
+export default function PdfToImagesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -11,7 +11,8 @@ export default function PdfToWordPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Conversion options
-  const [quality, setQuality] = useState<string>('high');
+  const [format, setFormat] = useState<string>('jpg');
+  const [dpi, setDpi] = useState<number>(150);
   const [pageRange, setPageRange] = useState<string>('all');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,18 +99,19 @@ export default function PdfToWordPage() {
       // Create form data
       const formData = new FormData();
       formData.append('pdf', file);
-      formData.append('quality', quality);
+      formData.append('format', format);
+      formData.append('dpi', dpi.toString());
       formData.append('pageRange', pageRange);
       
       // Send request to API
-      const response = await fetch('/api/pdf/to-word', {
+      const response = await fetch('/api/pdf/to-images', {
         method: 'POST',
         body: formData,
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to convert PDF to Word');
+        throw new Error(errorData.error || 'Failed to convert PDF to images');
       }
       
       // Get the blob from the response
@@ -121,7 +123,7 @@ export default function PdfToWordPage() {
       // Set download link
       if (downloadLinkRef.current) {
         downloadLinkRef.current.href = url;
-        downloadLinkRef.current.download = file.name.replace('.pdf', '.docx');
+        downloadLinkRef.current.download = file.name.replace('.pdf', `_images.zip`);
         setIsComplete(true);
       }
     } catch (err: any) {
@@ -171,7 +173,8 @@ export default function PdfToWordPage() {
     setFile(null);
     setIsComplete(false);
     setError(null);
-    setQuality('high');
+    setFormat('jpg');
+    setDpi(150);
     setPageRange('all');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -180,9 +183,9 @@ export default function PdfToWordPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">Convert PDF to Word</h1>
+      <h1 className="text-3xl font-bold mb-2">Convert PDF to Images</h1>
       <p className="text-gray-600 dark:text-gray-300 mb-6">
-        Transform your PDF documents into editable Microsoft Word files
+        Convert your PDF documents to high-quality JPG or PNG images
       </p>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -267,51 +270,59 @@ export default function PdfToWordPage() {
           </div>
           
           <div className="space-y-6">
-            {/* Quality selection */}
+            {/* Image format selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Conversion Quality
+                Image Format
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   className={`py-2 px-4 rounded-lg border text-center ${
-                    quality === 'draft'
+                    format === 'jpg'
                       ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400 text-blue-700 dark:text-blue-300'
                       : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'
                   }`}
-                  onClick={() => setQuality('draft')}
+                  onClick={() => setFormat('jpg')}
                 >
-                  <div className="font-medium">Draft</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Faster conversion</div>
+                  <div className="font-medium">JPG</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Smaller file size</div>
                 </button>
                 
                 <button
                   type="button"
                   className={`py-2 px-4 rounded-lg border text-center ${
-                    quality === 'standard'
+                    format === 'png'
                       ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400 text-blue-700 dark:text-blue-300'
                       : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'
                   }`}
-                  onClick={() => setQuality('standard')}
+                  onClick={() => setFormat('png')}
                 >
-                  <div className="font-medium">Standard</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Balanced</div>
-                </button>
-                
-                <button
-                  type="button"
-                  className={`py-2 px-4 rounded-lg border text-center ${
-                    quality === 'high'
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400 text-blue-700 dark:text-blue-300'
-                      : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'
-                  }`}
-                  onClick={() => setQuality('high')}
-                >
-                  <div className="font-medium">High</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Best accuracy</div>
+                  <div className="font-medium">PNG</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Lossless quality</div>
                 </button>
               </div>
+            </div>
+            
+            {/* DPI selection */}
+            <div>
+              <label htmlFor="dpi" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Image Quality (DPI)
+              </label>
+              <select
+                id="dpi"
+                value={dpi}
+                onChange={(e) => setDpi(parseInt(e.target.value))}
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="72">72 DPI (Screen Resolution)</option>
+                <option value="150">150 DPI (Good Quality)</option>
+                <option value="300">300 DPI (Print Quality)</option>
+                <option value="600">600 DPI (High Quality)</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Higher DPI results in better quality but larger file size
+              </p>
             </div>
             
             {/* Page range */}
@@ -333,13 +344,10 @@ export default function PdfToWordPage() {
             </div>
             
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mt-4">
-              <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">About This Conversion</h3>
-              <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
-                <li>• Converts your PDF into an editable Microsoft Word document (.docx)</li>
-                <li>• Preserves text formatting, images, and basic layout</li>
-                <li>• Complex layouts and some formatting may require adjustment</li>
-                <li>• Higher quality setting provides better formatting accuracy</li>
-              </ul>
+              <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">Output Information</h3>
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                All pages will be converted and provided in a ZIP file for convenient download.
+              </p>
             </div>
           </div>
         </div>
@@ -366,7 +374,7 @@ export default function PdfToWordPage() {
               Processing...
             </>
           ) : (
-            'Convert to Word'
+            'Convert to Images'
           )}
         </button>
       </div>
@@ -382,7 +390,7 @@ export default function PdfToWordPage() {
           </div>
           
           <p className="text-green-700 dark:text-green-300 mb-4">
-            Your PDF has been converted to a Microsoft Word document.
+            Your PDF has been converted to {format.toUpperCase()} images at {dpi} DPI.
           </p>
           
           <div className="flex items-center justify-end">
@@ -391,7 +399,7 @@ export default function PdfToWordPage() {
               className="py-2 px-6 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white rounded-lg font-medium flex items-center"
             >
               <FiDownload className="mr-2" />
-              Download Word Document
+              Download Images (ZIP)
             </a>
           </div>
         </div>
