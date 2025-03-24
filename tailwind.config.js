@@ -8,135 +8,85 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic':
+          'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      },
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+        'factory-blue': {
+          50: '#eef7ff',
+          100: '#d9edff',
+          200: '#bde0ff',
+          300: '#90caff',
+          400: '#5badff',
+          500: '#3490fc',
+          600: '#1a72f2',
+          700: '#155ce2',
+          800: '#1748b7',
+          900: '#183e91',
+          950: '#142759',
         },
-        secondary: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-        },
-        gray: {
-          750: '#2d3748', // Custom shade between gray-700 and gray-800
+        'factory-teal': {
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+          950: '#042f2e',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        display: ['Poppins', 'ui-sans-serif', 'system-ui'],
+      },
+      boxShadow: {
+        'factory': '0 10px 40px -10px rgba(0, 0, 0, 0.2)',
+        'factory-lg': '0 20px 60px -20px rgba(0, 0, 0, 0.3)',
       },
       animation: {
-        'fadeIn': 'fadeIn 0.5s ease-in-out',
-        'slideUp': 'slideUp 0.5s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'bounce-slow': 'bounce 3s ease-in-out infinite',
-        'spin-slow': 'spin 3s linear infinite',
-        'newBadge': 'newBadge 2s ease-in-out infinite',
-        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
-        'blob': 'blob 7s infinite',
-        'shimmer': 'shimmer 2s linear infinite',
-        'shimmer-vertical': 'shimmerVertical 2s linear infinite',
+        'spin-slow': 'spin-slow 8s linear infinite',
+        'spin-reverse': 'spin-reverse 6s linear infinite',
+        'float': 'float 6s ease-in-out infinite',
+        'float-delay': 'float-delay 5s ease-in-out infinite 1s',
+        'file-move': 'file-move 6s ease-in-out infinite',
+        'file-appear': 'file-appear 6s ease-in-out infinite',
       },
       keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+        'spin-slow': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
         },
-        slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
+        'spin-reverse': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(-360deg)' },
         },
-        newBadge: {
-          '0%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.1)' },
-          '100%': { transform: 'scale(1)' },
+        'float': {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-20px)' },
         },
-        fadeInUp: {
-          '0%': { 
-            opacity: '0',
-            transform: 'translateY(20px)'
-          },
-          '100%': { 
-            opacity: '1',
-            transform: 'translateY(0)'
-          },
+        'float-delay': {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-20px)' },
         },
-        blob: {
-          '0%': {
-            transform: 'translate(0px, 0px) scale(1)'
-          },
-          '33%': {
-            transform: 'translate(30px, -50px) scale(1.1)'
-          },
-          '66%': {
-            transform: 'translate(-20px, 20px) scale(0.9)'
-          },
-          '100%': {
-            transform: 'translate(0px, 0px) scale(1)'
-          },
+        'file-move': {
+          '0%': { transform: 'translateX(-50px) rotate(-12deg)', opacity: '0' },
+          '20%': { transform: 'translateX(0) rotate(-12deg)', opacity: '1' },
+          '80%': { transform: 'translateX(0) rotate(-12deg)', opacity: '1' },
+          '100%': { transform: 'translateX(50px) rotate(-12deg)', opacity: '0' },
         },
-        shimmer: {
-          '0%': {
-            transform: 'translateX(-100%)'
-          },
-          '100%': {
-            transform: 'translateX(100%)'
-          }
-        },
-        shimmerVertical: {
-          '0%': {
-            transform: 'translateY(-100%)'
-          },
-          '100%': {
-            transform: 'translateY(100%)'
-          }
-        }
-      },
-      transitionDuration: {
-        '2000': '2000ms',
-      },
-      utilities: {
-        '.animation-delay-2000': {
-          'animation-delay': '2s',
-        },
-        '.animation-delay-4000': {
-          'animation-delay': '4s',
+        'file-appear': {
+          '0%, 40%': { transform: 'translateX(50px) rotate(12deg)', opacity: '0' },
+          '60%': { transform: 'translateX(0) rotate(12deg)', opacity: '1' },
+          '100%': { transform: 'translateX(0) rotate(12deg)', opacity: '1' },
         },
       }
     },
   },
-  plugins: [
-    function ({ addUtilities }) {
-      const newUtilities = {
-        '.animation-delay-2000': {
-          'animation-delay': '2s',
-        },
-        '.animation-delay-4000': {
-          'animation-delay': '4s',
-        },
-        '.animation-delay-300': {
-          'animation-delay': '300ms',
-        },
-        '.animation-delay-600': {
-          'animation-delay': '600ms',
-        },
-      }
-      addUtilities(newUtilities)
-    },
-  ]
+  plugins: [],
 } 
