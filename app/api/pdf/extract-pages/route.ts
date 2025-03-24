@@ -5,11 +5,7 @@ import fs from 'fs';
 import os from 'os';
 
 // Disable body parser, we'll handle the form data manually
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
 
 // Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {
@@ -172,3 +168,4 @@ export async function POST(req: NextRequest) {
     );
   }
 } 
+

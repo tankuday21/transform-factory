@@ -4,11 +4,7 @@ import path from 'path';
 import os from 'os';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
 
 // Parse form data from the request
 async function parseForm(req: NextRequest) {
@@ -367,3 +363,4 @@ The repair process ${repairSuccessful ? 'was successful' : 'encountered issues'}
     );
   }
 } 
+

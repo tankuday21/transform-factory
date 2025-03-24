@@ -4,11 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
 
 // Helper function to parse form data
 async function parseForm(req: NextRequest) {
@@ -304,3 +300,4 @@ export async function POST(req: NextRequest) {
     );
   }
 } 
+

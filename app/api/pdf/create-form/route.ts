@@ -7,11 +7,7 @@ import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
 
 // Disable default body parsing
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
 
 // Form field interface
 interface FormField {
@@ -272,3 +268,4 @@ export async function POST(req: NextRequest) {
     );
   }
 } 
+

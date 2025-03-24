@@ -6,11 +6,7 @@ import * as os from 'os';
 import { PDFDocument } from 'pdf-lib';
 
 // Configuration for the API route
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
 
 // Parse the form data
 async function parseForm(req: NextRequest) {
@@ -167,3 +163,4 @@ function simulateFontCount(pageCount: number): number {
   // Most documents use 2-6 fonts
   return Math.min(8, Math.max(1, Math.floor(Math.random() * 4) + 2));
 } 
+
