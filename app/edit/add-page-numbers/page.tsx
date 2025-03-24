@@ -14,7 +14,7 @@ export default function AddPageNumbersPage() {
   const [startNumber, setStartNumber] = useState<number>(1)
   const [position, setPosition] = useState<string>('bottom-center')
   const [prefix, setPrefix] = useState<string>('')
-  const [suffix, setPrefix] = useState<string>('')
+  const [suffix, setSuffix] = useState<string>('')
   const [fontSize, setFontSize] = useState<number>(12)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -132,6 +132,7 @@ export default function AddPageNumbersPage() {
     setStartNumber(1)
     setPosition('bottom-center')
     setPrefix('')
+    setSuffix('')
     setFontSize(12)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -315,7 +316,7 @@ export default function AddPageNumbersPage() {
                   type="text"
                   id="suffix"
                   value={suffix}
-                  onChange={(e) => setPrefix(e.target.value)}
+                  onChange={(e) => setSuffix(e.target.value)}
                   placeholder="e.g., ' of X'"
                   className="block w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />

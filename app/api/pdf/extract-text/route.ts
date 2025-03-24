@@ -1,129 +1,133 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFDocument, PDFPage } from 'pdf-lib';
-import { mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
-import * as formidable from 'formidable';
-import { PassThrough } from 'stream';
+import { PDFDocument } from 'pdf-lib';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
 import * as pdfjs from 'pdfjs-dist';
 
 // Set up the worker for pdf.js
-const pdfjsWorker = join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.js');
+const pdfjsWorker = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.js');
 if (typeof window === 'undefined') {
-  // We're on the server
   pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
 
-// Disable default body parsing
+// Disable body parser, we'll handle the form data manually
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Function to parse form data with files
-const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
-  return new Promise((resolve, reject) => {
-    const form = new formidable.IncomingForm({
-      multiples: true,
-      maxFileSize: 20 * 1024 * 1024, // 20MB
-    });
+// Function to parse form data including file uploads
+const parseForm = async (req: NextRequest) => {
+  const formData = await req.formData();
+  const pdf = formData.get('pdf') as File;
+  const pageRange = formData.get('pageRange') as string;
+  const format = formData.get('format') as string;
 
-    req.arrayBuffer().then((arrayBuffer) => {
-      // Convert arrayBuffer to buffer
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Create a PassThrough stream
-      const passThrough = new PassThrough();
-      passThrough.end(buffer);
-
-      form.parse(passThrough as any, (err: any, fields: formidable.Fields, files: formidable.Files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      });
-    });
-  });
+  return {
+    pdf,
+    pageRange: pageRange || 'all',
+    format: format || 'text', // 'text' or 'json'
+  };
 };
 
 export async function POST(req: NextRequest) {
   try {
-    // Create tmp directory if it doesn't exist
-    const tmpDir = join(process.cwd(), 'tmp');
-    if (!existsSync(tmpDir)) {
-      await mkdir(tmpDir, { recursive: true });
+    // Create a temp directory for processing if it doesn't exist
+    const tempDir = path.join(os.tmpdir(), 'transform-factory-pdf');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
 
     // Parse the form data
-    const { fields, files } = await parseForm(req);
-    
-    // Get the uploaded PDF file
-    const pdfFile = Array.isArray(files.pdf) ? files.pdf[0] : files.pdf;
-    
-    if (!pdfFile || !pdfFile.originalFilename) {
+    const { pdf, pageRange, format } = await parseForm(req);
+
+    // Check if PDF file is provided
+    if (!pdf) {
       return NextResponse.json(
-        { error: 'No PDF file uploaded' },
+        { error: 'No PDF file provided' },
         { status: 400 }
       );
     }
 
-    // Read file as buffer
-    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const buffer = Buffer.alloc(pdfFile.size);
-      const stream = require('fs').createReadStream(pdfFile.filepath);
-      let pos = 0;
-      
-      stream.on('data', (chunk: Buffer) => {
-        chunk.copy(buffer, pos);
-        pos += chunk.length;
-      });
-      
-      stream.on('end', () => {
-        resolve(buffer);
-      });
-      
-      stream.on('error', (err: Error) => {
-        reject(err);
-      });
-    });
+    // Read the PDF file as buffer
+    const pdfBuffer = Buffer.from(await pdf.arrayBuffer());
+    const pdfPath = path.join(tempDir, `${Date.now()}-input.pdf`);
+    fs.writeFileSync(pdfPath, pdfBuffer);
+
+    // Load the PDF using pdf.js
+    const loadingTask = pdfjs.getDocument({ data: pdfBuffer });
+    const pdfDocument = await loadingTask.promise;
+    const totalPages = pdfDocument.numPages;
+
+    // Determine which pages to extract
+    let pagesToExtract: number[] = [];
     
-    // Load the PDF document using pdf.js for text extraction
-    const pdfData = new Uint8Array(fileBuffer);
-    const loadingTask = pdfjs.getDocument({ data: pdfData });
-    const pdfDoc = await loadingTask.promise;
-    
-    const pageCount = pdfDoc.numPages;
-    const extractedText: string[] = [];
-    
-    // Extract text from each page
-    for (let i = 1; i <= pageCount; i++) {
-      const page = await pdfDoc.getPage(i);
-      const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str);
-      const pageText = strings.join(' ');
-      extractedText.push(pageText);
-    }
-    
-    // Combine text from all pages
-    const fullText = extractedText.join('\n\n--- Page Break ---\n\n');
-    
-    // Determine the format to return
-    const format = fields.format ? 
-      (Array.isArray(fields.format) ? fields.format[0] : fields.format as string) : 
-      'text';
-    
-    if (format === 'json') {
-      return NextResponse.json({
-        text: fullText,
-        pages: extractedText,
-        pageCount,
-        filename: pdfFile.originalFilename,
-      });
+    if (pageRange === 'all') {
+      // Extract all pages
+      pagesToExtract = Array.from({ length: totalPages }, (_, i) => i + 1);
     } else {
-      // Return as text file
-      return new NextResponse(fullText, {
+      // Parse page range
+      const ranges = pageRange.split(',').map(r => r.trim());
+      const pageSet = new Set<number>();
+      
+      for (const range of ranges) {
+        if (range.includes('-')) {
+          const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+          for (let i = start; i <= end; i++) {
+            if (i > 0 && i <= totalPages) {
+              pageSet.add(i);
+            }
+          }
+        } else {
+          const page = parseInt(range);
+          if (page > 0 && page <= totalPages) {
+            pageSet.add(page);
+          }
+        }
+      }
+      
+      if (pageSet.size === 0) {
+        return NextResponse.json(
+          { error: 'Invalid page range provided' },
+          { status: 400 }
+        );
+      }
+      
+      pagesToExtract = Array.from(pageSet).sort((a, b) => a - b);
+    }
+
+    // Extract text from each page
+    const result: Record<string, string> = {};
+    let fullText = '';
+    
+    for (const pageNum of pagesToExtract) {
+      const page = await pdfDocument.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      // Extract text items and join them with spaces
+      const pageText = textContent.items
+        .map((item: any) => 'str' in item ? item.str : '')
+        .join(' ');
+      
+      result[`page_${pageNum}`] = pageText;
+      fullText += pageText + '\n\n';
+    }
+
+    // Clean up temporary files
+    fs.unlinkSync(pdfPath);
+    
+    // Return the extracted text in the requested format
+    if (format === 'json') {
+      return NextResponse.json(result);
+    } else {
+      // Return as plain text file
+      const textBuffer = Buffer.from(fullText);
+      return new NextResponse(textBuffer, {
         headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${pdfFile.originalFilename.replace('.pdf', '.txt')}"`,
+          'Content-Type': 'text/plain',
+          'Content-Disposition': `attachment; filename="${pdf.name.replace('.pdf', '')}_text.txt"`,
         },
       });
     }
