@@ -7,11 +7,8 @@ import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
 
 // Disable default body parsing
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
