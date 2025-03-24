@@ -1,6 +1,11 @@
 'use client'
 
-// Reuse the same component as the convert tools
-import ToolPage from '@/app/convert/[...tool]/page'
+import { useParams } from 'next/navigation'
+import ToolPage from '@/app/components/ToolPage'
 
-export default ToolPage 
+export default function AdvancedToolPage() {
+  const params = useParams()
+  const toolId = Array.isArray(params.tool) ? params.tool.join('-') : params.tool
+
+  return <ToolPage toolId={toolId} category="advanced" />
+} 

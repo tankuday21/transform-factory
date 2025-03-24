@@ -47,6 +47,10 @@ module.exports = {
         'bounce-slow': 'bounce 3s ease-in-out infinite',
         'spin-slow': 'spin 3s linear infinite',
         'newBadge': 'newBadge 2s ease-in-out infinite',
+        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+        'blob': 'blob 7s infinite',
+        'shimmer': 'shimmer 2s linear infinite',
+        'shimmer-vertical': 'shimmerVertical 2s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -62,11 +66,77 @@ module.exports = {
           '50%': { transform: 'scale(1.1)' },
           '100%': { transform: 'scale(1)' },
         },
+        fadeInUp: {
+          '0%': { 
+            opacity: '0',
+            transform: 'translateY(20px)'
+          },
+          '100%': { 
+            opacity: '1',
+            transform: 'translateY(0)'
+          },
+        },
+        blob: {
+          '0%': {
+            transform: 'translate(0px, 0px) scale(1)'
+          },
+          '33%': {
+            transform: 'translate(30px, -50px) scale(1.1)'
+          },
+          '66%': {
+            transform: 'translate(-20px, 20px) scale(0.9)'
+          },
+          '100%': {
+            transform: 'translate(0px, 0px) scale(1)'
+          },
+        },
+        shimmer: {
+          '0%': {
+            transform: 'translateX(-100%)'
+          },
+          '100%': {
+            transform: 'translateX(100%)'
+          }
+        },
+        shimmerVertical: {
+          '0%': {
+            transform: 'translateY(-100%)'
+          },
+          '100%': {
+            transform: 'translateY(100%)'
+          }
+        }
       },
       transitionDuration: {
         '2000': '2000ms',
       },
+      utilities: {
+        '.animation-delay-2000': {
+          'animation-delay': '2s',
+        },
+        '.animation-delay-4000': {
+          'animation-delay': '4s',
+        },
+      }
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.animation-delay-2000': {
+          'animation-delay': '2s',
+        },
+        '.animation-delay-4000': {
+          'animation-delay': '4s',
+        },
+        '.animation-delay-300': {
+          'animation-delay': '300ms',
+        },
+        '.animation-delay-600': {
+          'animation-delay': '600ms',
+        },
+      }
+      addUtilities(newUtilities)
+    },
+  ]
 } 
