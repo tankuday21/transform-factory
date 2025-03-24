@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { FiArrowLeft, FiUpload, FiDownload, FiCheckCircle } from 'react-icons/fi'
-import toolConfigs, { ToolConfig } from '@/app/data/toolConfig'
+import { toolConfigData, ToolConfig } from '@/app/data/toolConfigData'
 
 interface ToolPageProps {
   toolId: string;
@@ -16,14 +16,14 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
   const [isComplete, setIsComplete] = useState(false)
   
   // Get tool configuration if it exists
-  const toolConfig = toolConfigs[toolId] || {
+  const toolConfig = toolConfigData[toolId] || {
     title: toolId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
     description: `This is a tool for ${toolId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}`,
     acceptedFiles: ['.pdf'],
     outputFormat: '.pdf',
     steps: ['Upload your files', 'Process them', 'Download the result'],
     features: ['File processing', 'High quality output']
-  };
+  } as ToolConfig;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -152,7 +152,7 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
             </div>
             <div className="p-6 bg-white dark:bg-gray-800">
               <div className="space-y-6">
-                {toolConfig.steps.map((step, index) => (
+                {toolConfig.steps.map((step: string, index: number) => (
                   <div key={index} className="flex">
                     <div className="flex-shrink-0 mr-4">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
@@ -176,7 +176,7 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
             </div>
             <div className="p-6 bg-white dark:bg-gray-800">
               <ul className="space-y-3">
-                {toolConfig.features.map((feature, index) => (
+                {toolConfig.features.map((feature: string, index: number) => (
                   <li key={index} className="flex items-start">
                     <FiCheckCircle className="mt-1 mr-2 text-green-500 flex-shrink-0" />
                     <span className="text-gray-600 dark:text-gray-400">{feature}</span>
@@ -196,8 +196,8 @@ export default function ToolPage({ toolId, category }: ToolPageProps) {
             </div>
             <div className="p-6 bg-white dark:bg-gray-800">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {toolConfig.relatedTools.map((relatedToolId, index) => {
-                  const relatedTool = toolConfigs[relatedToolId];
+                {toolConfig.relatedTools.map((relatedToolId: string, index: number) => {
+                  const relatedTool = toolConfigData[relatedToolId];
                   if (!relatedTool) return null;
                   
                   return (

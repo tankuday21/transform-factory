@@ -35,7 +35,7 @@ export interface ToolConfig {
 }
 
 // Create a map of tool configurations
-const toolConfigs: Record<string, ToolConfig> = {
+export const toolConfigData: Record<string, ToolConfig> = {
   // Convert category
   'pdf-to-word': {
     title: 'Convert PDF to Word',
@@ -280,6 +280,4 @@ const toolConfigs: Record<string, ToolConfig> = {
     ],
     relatedTools: ['protect-pdf', 'edit-pdf', 'add-watermark']
   }
-};
-
-export default toolConfigs; 
+}; 
