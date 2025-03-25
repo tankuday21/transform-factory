@@ -53,8 +53,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Read the PDF file as buffer
-    const pdfBuffer = Buffer.from(await pdf.arrayBuffer());
+    // Read file as buffer
+    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const buffer = Buffer.alloc(pdf.size);
+      const stream = require('fs').createReadStream(pdf.filepath);
+      let pos = 0;
+      
+      stream.on('data', (chunk: Buffer) => {
+        chunk.copy(buffer, pos);
+        pos += chunk.length;
+      });
+      
+      stream.on('end', () => {
+        resolve(buffer);
+      });
+      
+      stream.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
     const pdfPath = path.join(tempDir, `${Date.now()}-input.pdf`);
     fs.writeFileSync(pdfPath, pdfBuffer);
 
