@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 // Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
   return new Promise((resolve, reject) => {
-    const form = formidable({
+    const form = new formidable.IncomingForm({
       multiples: true,
       maxFileSize: 10 * 1024 * 1024, // 10MB
     });
