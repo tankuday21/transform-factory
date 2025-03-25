@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
-import { mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
+import { writeFile, mkdir } from 'fs/promises';
+import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
-import fontkit from '@pdf-lib/fontkit';
+import os from 'os';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
@@ -19,6 +19,7 @@ const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields;
       maxFileSize: 10 * 1024 * 1024, // 10MB
     });
 
+    const chunks: Buffer[] = [];
     req.arrayBuffer().then((arrayBuffer) => {
       // Convert arrayBuffer to buffer
       const buffer = Buffer.from(arrayBuffer);
@@ -46,48 +47,36 @@ export async function POST(req: NextRequest) {
     // Parse the form data
     const { fields, files } = await parseForm(req);
     
-    // Get the uploaded PDF file
-    const pdfFile = Array.isArray(files.pdf) ? files.pdf[0] : files.pdf;
-    
-    if (!pdfFile || !pdfFile.filepath) {
+    // Get the file buffer
+    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!file || !file.filepath) {
       return NextResponse.json(
         { error: 'No PDF file uploaded' },
         { status: 400 }
       );
     }
 
-    // Get watermark options
-    const watermarkText = Array.isArray(fields.watermarkText) 
-      ? fields.watermarkText[0] 
-      : fields.watermarkText as string;
+    // Get watermark parameters
+    const watermarkText = Array.isArray(fields.watermarkText)
+      ? fields.watermarkText[0]
+      : (fields.watermarkText as unknown as string);
 
-    const watermarkOpacity = Array.isArray(fields.watermarkOpacity) 
-      ? parseFloat(fields.watermarkOpacity[0]) 
-      : parseFloat(fields.watermarkOpacity as string) || 0.3;
+    const watermarkOpacity = Array.isArray(fields.watermarkOpacity)
+      ? parseFloat(fields.watermarkOpacity[0])
+      : parseFloat((fields.watermarkOpacity as unknown as string) || '0.5');
 
-    const watermarkPosition = Array.isArray(fields.watermarkPosition) 
-      ? fields.watermarkPosition[0] 
-      : fields.watermarkPosition as string || 'center';
+    const watermarkSize = Array.isArray(fields.watermarkSize)
+      ? parseInt(fields.watermarkSize[0])
+      : parseInt((fields.watermarkSize as unknown as string) || '50');
 
-    const watermarkSize = Array.isArray(fields.watermarkSize) 
-      ? parseInt(fields.watermarkSize[0]) 
-      : parseInt(fields.watermarkSize as string) || 50;
-
-    const watermarkRotation = Array.isArray(fields.watermarkRotation) 
-      ? parseInt(fields.watermarkRotation[0]) 
-      : parseInt(fields.watermarkRotation as string) || 45;
-    
-    if (!watermarkText) {
-      return NextResponse.json(
-        { error: 'Watermark text is required' },
-        { status: 400 }
-      );
-    }
+    const watermarkRotation = Array.isArray(fields.watermarkRotation)
+      ? parseInt(fields.watermarkRotation[0])
+      : parseInt((fields.watermarkRotation as unknown as string) || '-45');
 
     // Read the PDF file
     const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const buffer = Buffer.alloc(pdfFile.size);
-      const stream = require('fs').createReadStream(pdfFile.filepath);
+      const buffer = Buffer.alloc(file.size);
+      const stream = require('fs').createReadStream(file.filepath);
       let pos = 0;
       
       stream.on('data', (chunk: Buffer) => {
@@ -103,93 +92,35 @@ export async function POST(req: NextRequest) {
         reject(err);
       });
     });
-    
+
     // Load the PDF document
-    const pdfDoc = await PDFDocument.create();
-    
-    // Register fontkit
-    pdfDoc.registerFontkit(fontkit);
-    
-    // Load the PDF
-    const originalPdf = await PDFDocument.load(fileBuffer);
-    
-    // Get the number of pages
-    const pageCount = originalPdf.getPageCount();
-    
-    // Copy all pages from the original PDF
-    const pages = await pdfDoc.copyPages(originalPdf, originalPdf.getPageIndices());
-    pages.forEach(page => pdfDoc.addPage(page));
-    
-    // Embed the standard font
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    
+    const pdfDoc = await PDFDocument.load(fileBuffer);
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
     // Add watermark to each page
-    for (let i = 0; i < pageCount; i++) {
-      const page = pdfDoc.getPage(i);
+    const pages = pdfDoc.getPages();
+    for (const page of pages) {
       const { width, height } = page.getSize();
-      
-      // Set text properties
-      const textWidth = font.widthOfTextAtSize(watermarkText, watermarkSize);
-      const textHeight = font.heightAtSize(watermarkSize);
-      
-      // Calculate position
-      let x = width / 2 - textWidth / 2;
-      let y = height / 2 - textHeight / 2;
-      
-      // Adjust based on position
-      switch (watermarkPosition) {
-        case 'topLeft':
-          x = 50;
-          y = height - 50;
-          break;
-        case 'topCenter':
-          x = width / 2 - textWidth / 2;
-          y = height - 50;
-          break;
-        case 'topRight':
-          x = width - textWidth - 50;
-          y = height - 50;
-          break;
-        case 'centerLeft':
-          x = 50;
-          y = height / 2;
-          break;
-        case 'center':
-          // Default
-          break;
-        case 'centerRight':
-          x = width - textWidth - 50;
-          y = height / 2;
-          break;
-        case 'bottomLeft':
-          x = 50;
-          y = 50;
-          break;
-        case 'bottomCenter':
-          x = width / 2 - textWidth / 2;
-          y = 50;
-          break;
-        case 'bottomRight':
-          x = width - textWidth - 50;
-          y = 50;
-          break;
-      }
-      
-      // Draw the watermark text with rotation
+      const fontSize = watermarkSize;
+
+      // Draw watermark text
       page.drawText(watermarkText, {
-        x,
-        y,
-        size: watermarkSize,
-        font,
-        color: rgb(0, 0, 0).setAlpha(watermarkOpacity),
+        x: width / 2,
+        y: height / 2,
+        font: helveticaFont,
+        size: fontSize,
+        opacity: watermarkOpacity,
+        color: rgb(0.5, 0.5, 0.5),
         rotate: degrees(watermarkRotation),
+        xSkew: degrees(0),
+        ySkew: degrees(0),
       });
     }
-    
+
     // Save the PDF
     const pdfBytes = await pdfDoc.save();
-    
-    // Return the PDF
+
+    // Return the watermarked PDF
     return new NextResponse(pdfBytes, {
       headers: {
         'Content-Type': 'application/pdf',

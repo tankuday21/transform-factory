@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
-import { mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { writeFile, mkdir } from 'fs/promises';
+import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
-import { Readable } from 'stream';
-import { Blob } from 'buffer';
-import JSZip from 'jszip';
+import os from 'os';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
@@ -21,6 +19,7 @@ const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields;
       maxFileSize: 10 * 1024 * 1024, // 10MB
     });
 
+    const chunks: Buffer[] = [];
     req.arrayBuffer().then((arrayBuffer) => {
       // Convert arrayBuffer to buffer
       const buffer = Buffer.from(arrayBuffer);
@@ -48,25 +47,24 @@ export async function POST(req: NextRequest) {
     // Parse the form data
     const { fields, files } = await parseForm(req);
     
-    // Get the uploaded PDF file
-    const pdfFile = Array.isArray(files.pdf) ? files.pdf[0] : files.pdf;
-    
-    if (!pdfFile || !pdfFile.filepath) {
+    // Get the file buffer
+    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!file || !file.filepath) {
       return NextResponse.json(
         { error: 'No PDF file uploaded' },
         { status: 400 }
       );
     }
 
-    // Get split method and parameters
-    const splitMethod = Array.isArray(fields.splitMethod) 
-      ? fields.splitMethod[0] 
-      : fields.splitMethod as string || 'single';
-    
+    // Get split method from fields
+    const splitMethod = Array.isArray(fields.splitMethod)
+      ? fields.splitMethod[0]
+      : (fields.splitMethod as unknown as string) || 'single';
+
     // Read the PDF file
     const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const buffer = Buffer.alloc(pdfFile.size);
-      const stream = require('fs').createReadStream(pdfFile.filepath);
+      const buffer = Buffer.alloc(file.size);
+      const stream = require('fs').createReadStream(file.filepath);
       let pos = 0;
       
       stream.on('data', (chunk: Buffer) => {
@@ -82,85 +80,34 @@ export async function POST(req: NextRequest) {
         reject(err);
       });
     });
-    
+
     // Load the PDF document
     const pdfDoc = await PDFDocument.load(fileBuffer);
-    const pageCount = pdfDoc.getPageCount();
-    
-    // Initialize ZIP to store split PDFs
-    const zip = new JSZip();
-    
-    if (splitMethod === 'single') {
-      // Split by single pages - one PDF per page
-      for (let i = 0; i < pageCount; i++) {
-        // Create a new PDF document
-        const newPdf = await PDFDocument.create();
-        
-        // Copy the page
-        const [page] = await newPdf.copyPages(pdfDoc, [i]);
-        newPdf.addPage(page);
-        
-        // Save the new PDF
-        const newPdfBytes = await newPdf.save();
-        
-        // Add to ZIP
-        zip.file(`page_${i + 1}.pdf`, newPdfBytes);
-      }
-    } else if (splitMethod === 'range') {
-      // Get range parameters
-      const ranges = JSON.parse(fields.ranges as string || '[]');
-      
-      // Process each range
-      for (let rangeIndex = 0; rangeIndex < ranges.length; rangeIndex++) {
-        const range = ranges[rangeIndex];
-        const { start, end } = range;
-        
-        // Validate page range
-        if (start < 1 || end > pageCount || start > end) {
-          continue;
-        }
-        
-        // Convert to zero-based indices
-        const startIndex = start - 1;
-        const endIndex = end - 1;
-        
-        // Create a new PDF document
-        const newPdf = await PDFDocument.create();
-        
-        // Copy the pages
-        const pageIndices = Array.from(
-          { length: endIndex - startIndex + 1 },
-          (_, i) => startIndex + i
-        );
-        
-        const pages = await newPdf.copyPages(pdfDoc, pageIndices);
-        
-        // Add the pages to the new PDF
-        for (const page of pages) {
-          newPdf.addPage(page);
-        }
-        
-        // Save the new PDF
-        const newPdfBytes = await newPdf.save();
-        
-        // Add to ZIP
-        zip.file(`range_${start}-${end}.pdf`, newPdfBytes);
-      }
-    } else {
+    const numPages = pdfDoc.getPageCount();
+
+    if (numPages === 0) {
       return NextResponse.json(
-        { error: 'Invalid split method' },
+        { error: 'PDF file is empty' },
         { status: 400 }
       );
     }
-    
-    // Generate the ZIP file
-    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-    
-    // Return the ZIP file
-    return new NextResponse(zipBuffer, {
+
+    // Create a new PDF for each page
+    const pdfBuffers: Buffer[] = [];
+
+    for (let i = 0; i < numPages; i++) {
+      const newPdfDoc = await PDFDocument.create();
+      const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [i]);
+      newPdfDoc.addPage(copiedPage);
+      const pdfBytes = await newPdfDoc.save();
+      pdfBuffers.push(Buffer.from(pdfBytes));
+    }
+
+    // Return the split PDFs
+    return new NextResponse(pdfBuffers[0], {
       headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="split_pdfs.zip"`,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="split.pdf"`,
       },
     });
   } catch (error) {

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFDocument } from 'pdf-lib';
 import { mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
-import os from 'os';
+import PDFDocument from 'pdfkit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,52 +87,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Read file as buffer
-    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const buffer = Buffer.alloc(pdfFile.size);
-      const stream = require('fs').createReadStream(pdfFile.filepath);
-      let pos = 0;
-      
-      stream.on('data', (chunk: Buffer) => {
-        chunk.copy(buffer, pos);
-        pos += chunk.length;
-      });
-      
-      stream.on('end', () => {
-        resolve(buffer);
-      });
-      
-      stream.on('error', (err: Error) => {
-        reject(err);
-      });
-    });
-    
-    // Load the PDF document
-    const pdfDoc = await PDFDocument.load(fileBuffer);
-    
-    // Encrypt the PDF
-    const encryptOptions = {
-      userPassword,
+    // Create temporary file paths
+    const tempOutputPath = join(tmpDir, `output-${Date.now()}.pdf`);
+
+    // Create a new PDF document
+    const doc = new PDFDocument({
+      userPassword: userPassword,
       ownerPassword: ownerPassword || userPassword,
       permissions: {
-        printing: canPrint ? 'highResolution' : 'none',
+        printing: canPrint ? 'highResolution' : undefined,
         modifying: canModify,
         copying: canCopy,
         annotating: canAnnotate,
         fillingForms: canAnnotate,
         contentAccessibility: true,
         documentAssembly: canModify,
-      },
-    };
-    
-    // Apply encryption
-    pdfDoc.encrypt(encryptOptions);
-    
-    // Save the PDF
-    const pdfBytes = await pdfDoc.save();
-    
-    // Return the PDF
-    return new NextResponse(pdfBytes, {
+      }
+    });
+
+    // Pipe the PDF to a file
+    doc.pipe(require('fs').createWriteStream(tempOutputPath));
+
+    // Read the original PDF and copy its content
+    const originalPdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const stream = require('fs').createReadStream((pdfFile as any).filepath);
+      
+      stream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      
+      stream.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
+      
+      stream.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
+
+    // Add the content from the original PDF
+    doc.image(originalPdfBuffer, {
+      fit: [doc.page.width, doc.page.height],
+      align: 'center',
+      valign: 'center'
+    });
+
+    // Finalize the PDF
+    doc.end();
+
+    // Wait for the PDF to be written
+    await new Promise<void>((resolve) => {
+      doc.on('end', resolve);
+    });
+
+    // Read the encrypted PDF
+    const encryptedPdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const stream = require('fs').createReadStream(tempOutputPath);
+      
+      stream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      
+      stream.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
+      
+      stream.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
+
+    // Clean up temporary file
+    await new Promise(resolve => require('fs').unlink(tempOutputPath, resolve));
+
+    // Return the encrypted PDF
+    return new NextResponse(encryptedPdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="protected.pdf"`,

@@ -1,9 +1,11 @@
-import * as React from "react"
-import { toast } from "sonner"
+import { toast } from 'react-toastify';
 
 export function useToast() {
   return {
-    toast,
-    dismiss: toast.dismiss,
-  }
+    toast: {
+      success: (message: string) => toast.success(message),
+      error: (message: string) => toast.error(message),
+      info: (message: string) => toast.info(message),
+    },
+  };
 } 

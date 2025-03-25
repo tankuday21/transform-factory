@@ -141,15 +141,14 @@ export async function POST(req: NextRequest) {
     return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="scan.pdf"`,
+        'Content-Disposition': `attachment; filename="images.pdf"`,
       },
     });
   } catch (error) {
-    console.error('Error creating PDF from scanned images:', error);
+    console.error('Error creating PDF from images:', error);
     return NextResponse.json(
-      { error: 'Failed to create PDF from scanned images' },
+      { error: 'Failed to create PDF from images' },
       { status: 500 }
     );
   }
 } 
-

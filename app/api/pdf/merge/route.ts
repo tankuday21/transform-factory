@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';

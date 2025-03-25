@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import os from 'os';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, RotationTypes } from 'pdf-lib';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
 import { join } from 'path';
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     // Get rotation options
     const rotationAngle = fields.rotationAngle && Array.isArray(fields.rotationAngle)
       ? parseInt(fields.rotationAngle[0])
-      : parseInt(fields.rotationAngle as string) || 90; // Default to 90 degrees
+      : parseInt((fields.rotationAngle as string | undefined) || '90'); // Default to 90 degrees
 
     const pageNumbers = fields.pageNumbers && Array.isArray(fields.pageNumbers)
       ? JSON.parse(fields.pageNumbers[0])
@@ -102,16 +102,17 @@ export async function POST(req: NextRequest) {
         const page = pdfDoc.getPage(i);
         const currentRotation = page.getRotation().angle;
         const newRotation = (currentRotation + rotationAngle) % 360;
-        page.setRotation({ type: 'degrees', angle: newRotation });
+        page.setRotation({ type: RotationTypes.Degrees, angle: newRotation });
       }
     } else if (pageNumbers.length > 0) {
       // Rotate specific pages
-      for (const pageNum of pageNumbers) {
-        if (pageNum >= 1 && pageNum <= pageCount) {
-          const page = pdfDoc.getPage(pageNum - 1); // Convert to 0-based index
-          const currentRotation = page.getRotation().angle;
-          const newRotation = (currentRotation + rotationAngle) % 360;
-          page.setRotation({ type: 'degrees', angle: newRotation });
+      for (const pageNumber of pageNumbers) {
+        if (pageNumber >= 1 && pageNumber <= pageCount) {
+          const page = pdfDoc.getPage(pageNumber - 1);
+          page.setRotation({
+            type: RotationTypes.Degrees,
+            angle: rotationAngle,
+          });
         }
       }
     } else {

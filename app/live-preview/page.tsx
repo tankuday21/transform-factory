@@ -9,6 +9,8 @@ import {
   FiChevronLeft, FiChevronRight, FiDownload, FiType, FiImage, FiCrop, 
   FiAlertCircle, FiCheck, FiGlobe, FiX
 } from 'react-icons/fi';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -66,11 +68,11 @@ export default function LivePreviewPage() {
     if (rejectedFiles.length > 0) {
       const { errors } = rejectedFiles[0];
       if (errors[0]?.code === 'file-too-large') {
-        setError('File is too large. Maximum size is 30MB.');
+        toast.error('File is too large. Maximum size is 30MB.');
       } else if (errors[0]?.code === 'file-invalid-type') {
-        setError('Invalid file type. Please upload a PDF file.');
+        toast.error('Invalid file type. Please upload a PDF file.');
       } else {
-        setError(errors[0]?.message || 'Error uploading file.');
+        toast.error(errors[0]?.message || 'Error uploading file.');
       }
       return;
     }
@@ -79,6 +81,7 @@ export default function LivePreviewPage() {
       setFile(acceptedFiles[0]);
       setCurrentPage(1);
       setError(null);
+      toast.success('File uploaded successfully');
     }
   }, []);
   
@@ -189,6 +192,7 @@ export default function LivePreviewPage() {
   
   return (
     <div className="container mx-auto px-4 py-8">
+      <ToastContainer />
       <h1 className="text-3xl font-bold mb-2">Live PDF Preview</h1>
       <p className="text-gray-600 dark:text-gray-300 mb-8">
         Edit PDFs and preview changes in real-time

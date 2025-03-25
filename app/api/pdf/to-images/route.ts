@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Read file as buffer
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
       const buffer = Buffer.alloc(pdf.size);
-      const stream = require('fs').createReadStream(pdf.filepath);
+      const stream = require('fs').createReadStream((pdf as any).filepath);
       let pos = 0;
       
       stream.on('data', (chunk: Buffer) => {
