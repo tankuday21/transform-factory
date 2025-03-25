@@ -110,6 +110,12 @@ export default function ExtractPagesPage() {
       }
       
       const blob = await response.blob();
+      
+      // Check if blob is empty or invalid
+      if (!blob || blob.size === 0) {
+        throw new Error('Received empty response from server');
+      }
+      
       const url = URL.createObjectURL(blob);
       
       // Get content-disposition header to extract filename
@@ -141,7 +147,8 @@ export default function ExtractPagesPage() {
       }
     } catch (error) {
       console.error('Error extracting pages:', error);
-      toast.error('Failed to extract pages');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to extract pages';
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

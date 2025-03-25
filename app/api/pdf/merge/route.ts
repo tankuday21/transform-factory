@@ -1,40 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync, writeFileSync } from 'fs';
+import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import * as formidable from 'formidable';
-import { PassThrough } from 'stream';
 import os from 'os';
+import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Function to parse form data with files
-const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
-  return new Promise((resolve, reject) => {
-    const form = new formidable.IncomingForm({
-      multiples: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-    });
-
-    const chunks: Buffer[] = [];
-    req.arrayBuffer().then((arrayBuffer) => {
-      // Convert arrayBuffer to buffer
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Create a PassThrough stream
-      const passThrough = new PassThrough();
-      passThrough.end(buffer);
-
-      form.parse(passThrough as any, (err: any, fields: formidable.Fields, files: formidable.Files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      });
-    });
-  });
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,6 +25,7 @@ export async function POST(req: NextRequest) {
     const pdfFiles = Array.isArray(files.pdfs) ? files.pdfs : [files.pdfs];
     
     if (!pdfFiles || pdfFiles.length < 1 || !pdfFiles[0]) {
+      console.error('PDF merge: No PDF files uploaded');
       return NextResponse.json(
         { error: 'No PDF files uploaded' },
         { status: 400 }
@@ -66,24 +41,7 @@ export async function POST(req: NextRequest) {
       
       try {
         // Read file as buffer
-        const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-          const buffer = Buffer.alloc(file.size);
-          const stream = require('fs').createReadStream(file.filepath);
-          let pos = 0;
-          
-          stream.on('data', (chunk: Buffer) => {
-            chunk.copy(buffer, pos);
-            pos += chunk.length;
-          });
-          
-          stream.on('end', () => {
-            resolve(buffer);
-          });
-          
-          stream.on('error', (err: Error) => {
-            reject(err);
-          });
-        });
+        const fileBuffer = await readFileAsBuffer(file.filepath, file.size);
         
         // Load the PDF document
         const pdfDoc = await PDFDocument.load(fileBuffer);
@@ -100,16 +58,33 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // Save the merged PDF as a buffer
-    const mergedPdfBuffer = await mergedPdf.save();
+    // Check if any pages were added
+    if (mergedPdf.getPageCount() === 0) {
+      console.error('PDF merge: No valid pages to merge');
+      return NextResponse.json(
+        { error: 'No valid PDF files to merge' },
+        { status: 400 }
+      );
+    }
     
-    // Return the merged PDF
-    return new NextResponse(mergedPdfBuffer, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="merged.pdf"`,
-      },
-    });
+    try {
+      // Save the merged PDF as a buffer
+      const mergedPdfBuffer = await mergedPdf.save();
+      
+      // Return the merged PDF
+      return new NextResponse(mergedPdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="merged.pdf"`,
+        },
+      });
+    } catch (error) {
+      console.error('Error saving merged PDF:', error);
+      return NextResponse.json(
+        { error: 'Failed to save merged PDF' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error merging PDFs:', error);
     return NextResponse.json(

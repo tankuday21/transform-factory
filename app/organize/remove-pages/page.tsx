@@ -105,6 +105,12 @@ export default function RemovePagesPage() {
       }
       
       const blob = await response.blob();
+      
+      // Check if blob is empty or invalid
+      if (!blob || blob.size === 0) {
+        throw new Error('Received empty response from server');
+      }
+      
       const url = URL.createObjectURL(blob);
       
       // Get content-disposition header to extract filename

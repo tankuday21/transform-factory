@@ -178,16 +178,23 @@ export default function LivePreviewPage() {
   };
   
   // Apply changes and download the edited PDF
-  const downloadEditedPDF = () => {
-    // In a real implementation, this would send the file and operations to an API
-    // that would apply the changes and return an edited PDF
-    setIsLoading(true);
-    
-    // Simulate API processing delay
-    setTimeout(() => {
-      alert('In a real implementation, this would download the edited PDF with all applied changes.');
+  const downloadEditedPDF = async () => {
+    try {
+      setIsLoading(true);
+      
+      // In a real implementation, this would send the file and operations to an API
+      // that would apply the changes and return an edited PDF
+      
+      // Simulate API processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast.success('PDF processed successfully. Download would start in a real implementation.');
+    } catch (error) {
+      console.error('Error processing PDF:', error);
+      toast.error('Failed to process PDF.');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
   
   return (
