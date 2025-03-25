@@ -5,6 +5,7 @@ import os from 'os';
 import { PDFDocument } from 'pdf-lib';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
+import { join } from 'path';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     // Get the password from request
     const password = fields.password ? 
-      (Array.isArray(fields.password) ? fields.password[0] : fields.password) as string : 
+      (Array.isArray(fields.password) ? fields.password[0] : fields.password as string | undefined) || '' : 
       '';
 
     if (!password) {

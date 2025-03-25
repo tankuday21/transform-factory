@@ -58,11 +58,11 @@ export async function POST(req: NextRequest) {
     // Get protection options
     const userPassword = fields.userPassword && Array.isArray(fields.userPassword) 
       ? fields.userPassword[0] 
-      : fields.userPassword as string || '';
+      : (fields.userPassword as string | undefined) || '';
 
     const ownerPassword = fields.ownerPassword && Array.isArray(fields.ownerPassword) 
       ? fields.ownerPassword[0] 
-      : fields.ownerPassword as string || '';
+      : (fields.ownerPassword as string | undefined) || '';
     
     // Get permissions
     const canPrint = fields.canPrint && Array.isArray(fields.canPrint) 
