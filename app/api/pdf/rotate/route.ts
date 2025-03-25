@@ -5,6 +5,7 @@ import os from 'os';
 import { PDFDocument } from 'pdf-lib';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
+import { join } from 'path';
 
 // Disable default body parsing
 export const runtime = 'nodejs';

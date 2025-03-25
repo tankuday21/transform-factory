@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     const userPassword = fields.userPassword && Array.isArray(fields.userPassword) 
       ? fields.userPassword[0] 
       : fields.userPassword as string || '';
+
     const ownerPassword = fields.ownerPassword && Array.isArray(fields.ownerPassword) 
       ? fields.ownerPassword[0] 
       : fields.ownerPassword as string || '';
@@ -67,12 +68,15 @@ export async function POST(req: NextRequest) {
     const canPrint = fields.canPrint && Array.isArray(fields.canPrint) 
       ? fields.canPrint[0] === 'true' 
       : fields.canPrint === 'true';
+
     const canModify = fields.canModify && Array.isArray(fields.canModify) 
       ? fields.canModify[0] === 'true' 
       : fields.canModify === 'true';
+
     const canCopy = fields.canCopy && Array.isArray(fields.canCopy) 
       ? fields.canCopy[0] === 'true' 
       : fields.canCopy === 'true';
+
     const canAnnotate = fields.canAnnotate && Array.isArray(fields.canAnnotate) 
       ? fields.canAnnotate[0] === 'true' 
       : fields.canAnnotate === 'true';

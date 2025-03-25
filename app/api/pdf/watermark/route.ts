@@ -57,11 +57,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Get watermark options
-    const watermarkText = fields.watermarkText as string;
-    const watermarkOpacity = parseFloat(fields.watermarkOpacity as string) || 0.3;
-    const watermarkPosition = fields.watermarkPosition as string || 'center';
-    const watermarkSize = parseInt(fields.watermarkSize as string) || 50;
-    const watermarkRotation = parseInt(fields.watermarkRotation as string) || 45;
+    const watermarkText = Array.isArray(fields.watermarkText) 
+      ? fields.watermarkText[0] 
+      : fields.watermarkText as string;
+
+    const watermarkOpacity = Array.isArray(fields.watermarkOpacity) 
+      ? parseFloat(fields.watermarkOpacity[0]) 
+      : parseFloat(fields.watermarkOpacity as string) || 0.3;
+
+    const watermarkPosition = Array.isArray(fields.watermarkPosition) 
+      ? fields.watermarkPosition[0] 
+      : fields.watermarkPosition as string || 'center';
+
+    const watermarkSize = Array.isArray(fields.watermarkSize) 
+      ? parseInt(fields.watermarkSize[0]) 
+      : parseInt(fields.watermarkSize as string) || 50;
+
+    const watermarkRotation = Array.isArray(fields.watermarkRotation) 
+      ? parseInt(fields.watermarkRotation[0]) 
+      : parseInt(fields.watermarkRotation as string) || 45;
     
     if (!watermarkText) {
       return NextResponse.json(
@@ -71,7 +85,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Read the PDF file
-    const fileBuffer = await pdfFile.arrayBuffer();
+    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const buffer = Buffer.alloc(pdfFile.size);
+      const stream = require('fs').createReadStream(pdfFile.filepath);
+      let pos = 0;
+      
+      stream.on('data', (chunk: Buffer) => {
+        chunk.copy(buffer, pos);
+        pos += chunk.length;
+      });
+      
+      stream.on('end', () => {
+        resolve(buffer);
+      });
+      
+      stream.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
     
     // Load the PDF document
     const pdfDoc = await PDFDocument.create();

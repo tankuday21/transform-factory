@@ -59,10 +59,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Get split method and parameters
-    const splitMethod = fields.splitMethod as string;
+    const splitMethod = Array.isArray(fields.splitMethod) 
+      ? fields.splitMethod[0] 
+      : fields.splitMethod as string || 'single';
     
     // Read the PDF file
-    const fileBuffer = await pdfFile.arrayBuffer();
+    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const buffer = Buffer.alloc(pdfFile.size);
+      const stream = require('fs').createReadStream(pdfFile.filepath);
+      let pos = 0;
+      
+      stream.on('data', (chunk: Buffer) => {
+        chunk.copy(buffer, pos);
+        pos += chunk.length;
+      });
+      
+      stream.on('end', () => {
+        resolve(buffer);
+      });
+      
+      stream.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
     
     // Load the PDF document
     const pdfDoc = await PDFDocument.load(fileBuffer);

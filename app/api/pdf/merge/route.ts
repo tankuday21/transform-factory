@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     // Get the file buffers
     const pdfFiles = Array.isArray(files.pdfs) ? files.pdfs : [files.pdfs];
     
-    if (!pdfFiles || pdfFiles.length < 1) {
+    if (!pdfFiles || pdfFiles.length < 1 || !pdfFiles[0]) {
       return NextResponse.json(
         { error: 'No PDF files uploaded' },
         { status: 400 }
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     
     // Process each PDF file
     for (const file of pdfFiles) {
-      if (!file.filepath) continue;
+      if (!file || !file.filepath) continue;
       
       try {
         // Read file as buffer
