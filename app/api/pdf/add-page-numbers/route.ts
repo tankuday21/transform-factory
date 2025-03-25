@@ -6,9 +6,10 @@ import { join } from 'path';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
 
-// Disable default body parsing
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// Route Handler Configuration
+export const runtime = 'nodejs'; // Using nodejs runtime for file system operations
+export const dynamic = 'force-dynamic'; // Ensure the route is always dynamic
+export const bodyParser = false; // Disable automatic body parsing for form data
 
 // Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
@@ -164,4 +165,3 @@ export async function POST(req: NextRequest) {
     );
   }
 } 
-

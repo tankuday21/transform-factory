@@ -1,0 +1,10 @@
+[33mc5bb282[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: commit: Update API configs and add new features
+[33me447795[m HEAD@{1}: commit: Fix: Update API route configs to modern Next.js App Router format
+[33m8238619[m HEAD@{2}: commit: Redesign homepage with industrial theme and modern UI
+[33me404347[m HEAD@{3}: commit: Add advanced features: cloud integration, PDF analytics, batch processing, and live preview
+[33m3f8100a[m HEAD@{4}: commit: Add Excel to PDF and PowerPoint to PDF conversion features
+[33m7ac1fce[m HEAD@{5}: commit: Add Word to PDF conversion feature
+[33mc210c3f[m HEAD@{6}: commit: Add PDF text extraction feature
+[33m08bbded[m HEAD@{7}: commit: Add PDF page extraction and removal features
+[33mffba81e[m HEAD@{8}: commit: Add PDF to PowerPoint conversion feature
+[33m130a435[m HEAD@{9}: commit: Add PDF to Word and PDF to Images conversion features
