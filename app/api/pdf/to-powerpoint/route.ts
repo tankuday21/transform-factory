@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
-import formidable from 'formidable';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { exec } from 'child_process';
 import util from 'util';
+import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
 
 // Modern Next.js App Router configuration
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 
 const execPromise = util.promisify(exec);
 
-// Function to parse form data including file uploads
+/ Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;
@@ -169,5 +169,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
-
+}

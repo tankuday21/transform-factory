@@ -3,38 +3,12 @@ import { PDFDocument } from 'pdf-lib';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import * as formidable from 'formidable';
-import { PassThrough } from 'stream';
 import os from 'os';
+import { parseSimpleForm } from '@/app/lib/parse-form';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Function to parse form data with files
-const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
-  return new Promise((resolve, reject) => {
-    const form = new formidable.IncomingForm({
-      multiples: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-    });
-
-    const chunks: Buffer[] = [];
-    req.arrayBuffer().then((arrayBuffer) => {
-      // Convert arrayBuffer to buffer
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Create a PassThrough stream
-      const passThrough = new PassThrough();
-      passThrough.end(buffer);
-
-      form.parse(passThrough as any, (err: any, fields: formidable.Fields, files: formidable.Files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      });
-    });
-  });
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,105 +19,108 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the form data
-    const { files } = await parseForm(req);
+    const formData = await parseSimpleForm(req);
     
-    // Get the file buffers
-    const images = Array.isArray(files.images) ? files.images : [files.images];
+    // Get the uploaded images
+    const images = formData.images as File[];
     
-    if (!images || images.length < 1 || !images[0]) {
+    // Check if we have a File array or a single File
+    const imageFiles = Array.isArray(images) ? images : [images];
+    
+    if (!imageFiles || imageFiles.length < 1 || !imageFiles[0]) {
+      console.error('scan: No image files uploaded');
       return NextResponse.json(
         { error: 'No image files uploaded' },
         { status: 400 }
       );
     }
 
-    // Create a new PDF document
-    const pdfDoc = await PDFDocument.create();
-    
-    // Process each image file
-    for (const image of images) {
-      if (!image || !image.filepath) continue;
+    try {
+      // Create a new PDF document
+      const pdfDoc = await PDFDocument.create();
       
-      try {
-        // Read file as buffer
-        const imageBuffer = await new Promise<Buffer>((resolve, reject) => {
-          const buffer = Buffer.alloc(image.size);
-          const stream = require('fs').createReadStream(image.filepath);
-          let pos = 0;
+      // Process each image file
+      for (const image of imageFiles) {
+        try {
+          // Read image as buffer
+          const imageBuffer = Buffer.from(await image.arrayBuffer());
           
-          stream.on('data', (chunk: Buffer) => {
-            chunk.copy(buffer, pos);
-            pos += chunk.length;
-          });
+          // Create a new page
+          const page = pdfDoc.addPage();
           
-          stream.on('end', () => {
-            resolve(buffer);
-          });
+          // Embed the image
+          let pdfImage;
+          const imageType = image.type?.toLowerCase() || '';
+          if (imageType.includes('jpeg') || imageType.includes('jpg')) {
+            pdfImage = await pdfDoc.embedJpg(imageBuffer);
+          } else if (imageType.includes('png')) {
+            pdfImage = await pdfDoc.embedPng(imageBuffer);
+          } else {
+            console.warn(`Unsupported image type: ${imageType}`);
+            continue;
+          }
           
-          stream.on('error', (err: Error) => {
-            reject(err);
+          // Get page dimensions
+          const { width, height } = page.getSize();
+          
+          // Calculate scaling to fit the image within the page while maintaining aspect ratio
+          const imageRatio = pdfImage.width / pdfImage.height;
+          const pageRatio = width / height;
+          
+          let scaledWidth = width;
+          let scaledHeight = height;
+          
+          if (imageRatio > pageRatio) {
+            // Image is wider than the page ratio
+            scaledHeight = width / imageRatio;
+          } else {
+            // Image is taller than the page ratio
+            scaledWidth = height * imageRatio;
+          }
+          
+          // Calculate position to center the image
+          const x = (width - scaledWidth) / 2;
+          const y = (height - scaledHeight) / 2;
+          
+          // Draw the image
+          page.drawImage(pdfImage, {
+            x,
+            y,
+            width: scaledWidth,
+            height: scaledHeight,
           });
-        });
-        
-        // Create a new page
-        const page = pdfDoc.addPage();
-        
-        // Embed the image
-        let pdfImage;
-        const imageType = image.mimetype?.toLowerCase() || '';
-        if (imageType.includes('jpeg') || imageType.includes('jpg')) {
-          pdfImage = await pdfDoc.embedJpg(imageBuffer);
-        } else if (imageType.includes('png')) {
-          pdfImage = await pdfDoc.embedPng(imageBuffer);
-        } else {
-          console.warn(`Unsupported image type: ${imageType}`);
-          continue;
+        } catch (error) {
+          console.error(`Error processing image file ${image.name}:`, error);
+          // Continue with other images
         }
-        
-        // Get page dimensions
-        const { width, height } = page.getSize();
-        
-        // Calculate scaling to fit the image within the page while maintaining aspect ratio
-        const imageRatio = pdfImage.width / pdfImage.height;
-        const pageRatio = width / height;
-        
-        let scaledWidth = width;
-        let scaledHeight = height;
-        
-        if (imageRatio > pageRatio) {
-          // Image is wider than the page ratio
-          scaledHeight = width / imageRatio;
-        } else {
-          // Image is taller than the page ratio
-          scaledWidth = height * imageRatio;
-        }
-        
-        // Calculate position to center the image
-        const x = (width - scaledWidth) / 2;
-        const y = (height - scaledHeight) / 2;
-        
-        // Draw the image
-        page.drawImage(pdfImage, {
-          x,
-          y,
-          width: scaledWidth,
-          height: scaledHeight,
-        });
-      } catch (error) {
-        console.error(`Error processing file ${image.originalFilename}:`, error);
       }
+      
+      // Check if we have any pages
+      if (pdfDoc.getPageCount() === 0) {
+        console.error('scan: No valid images to convert to PDF');
+        return NextResponse.json(
+          { error: 'No valid images to convert to PDF' },
+          { status: 400 }
+        );
+      }
+      
+      // Save the PDF as a buffer
+      const pdfBuffer = await pdfDoc.save();
+      
+      // Return the PDF
+      return new NextResponse(pdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="scan.pdf"`,
+        },
+      });
+    } catch (pdfError) {
+      console.error('Error creating PDF document:', pdfError);
+      return NextResponse.json(
+        { error: 'Failed to create PDF from images' },
+        { status: 500 }
+      );
     }
-    
-    // Save the PDF as a buffer
-    const pdfBuffer = await pdfDoc.save();
-    
-    // Return the PDF
-    return new NextResponse(pdfBuffer, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="scan.pdf"`,
-      },
-    });
   } catch (error) {
     console.error('Error creating PDF from scanned images:', error);
     return NextResponse.json(
@@ -151,5 +128,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
-
+}

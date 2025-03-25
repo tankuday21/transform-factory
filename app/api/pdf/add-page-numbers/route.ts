@@ -3,14 +3,13 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import * as formidable from 'formidable';
-import { PassThrough } from 'stream';
+import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
 
 // Route Handler Configuration
 export const runtime = 'nodejs'; // Using nodejs runtime for file system operations
 export const dynamic = 'force-dynamic'; // Ensure the route is always dynamic
 
-// Function to parse form data with files
+/ Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
   return new Promise((resolve, reject) => {
     const form = new formidable.IncomingForm({
@@ -163,4 +162,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

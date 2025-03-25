@@ -5,12 +5,13 @@ import fs from 'fs';
 import os from 'os';
 import { execSync } from 'child_process';
 import * as XLSX from 'xlsx';
+import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
 
 // Modern Next.js App Router configuration
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Function to parse form data including file uploads
+/ Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;
@@ -153,5 +154,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
-
+}

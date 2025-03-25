@@ -3,15 +3,14 @@ import { mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import os from 'os';
 import { PDFDocument } from 'pdf-lib';
-import * as formidable from 'formidable';
-import { PassThrough } from 'stream';
 import { join } from 'path';
+import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Function to parse form data with files
+/ Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
   return new Promise((resolve, reject) => {
     const form = new formidable.IncomingForm({
@@ -119,5 +118,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
-
+}
