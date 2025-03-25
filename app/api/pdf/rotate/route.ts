@@ -26,7 +26,7 @@ const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields;
       const passThrough = new PassThrough();
       passThrough.end(buffer);
 
-      form.parse(passThrough, (err: any, fields: formidable.Fields, files: formidable.Files) => {
+      form.parse(passThrough as any, (err: any, fields: formidable.Fields, files: formidable.Files) => {
         if (err) reject(err);
         resolve({ fields, files });
       });
