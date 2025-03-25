@@ -1,13 +1,7 @@
 'use client';
 
 import Link from 'next/link'
-import { Metadata } from 'next'
 import Image from 'next/image'
-
-export const metadata: Metadata = {
-  title: 'Transform Factory - Convert Anything, Anywhere',
-  description: 'Your ultimate hub for transforming PDFs, videos, images and more. Fast, secure and powerful file conversion platform.',
-}
 
 const features = [
   {
