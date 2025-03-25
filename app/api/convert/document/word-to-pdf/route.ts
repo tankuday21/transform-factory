@@ -6,7 +6,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Modern Next.js App Router configuration
 export const dynamic = 'force-dynamic';
-export const bodyStream = true;
+export const runtime = 'nodejs';
 
 // Parse form data
 async function parseForm(req: NextRequest) {

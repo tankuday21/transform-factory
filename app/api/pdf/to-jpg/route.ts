@@ -15,7 +15,7 @@ if (typeof window === 'undefined') {
 
 // Modern Next.js App Router configuration
 export const dynamic = 'force-dynamic';
-export const bodyStream = true;
+export const runtime = 'nodejs';
 
 // Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {

@@ -9,7 +9,7 @@ import util from 'util';
 
 // Modern Next.js App Router configuration
 export const dynamic = 'force-dynamic';
-export const bodyStream = true;
+export const runtime = 'nodejs';
 
 const execPromise = util.promisify(exec);
 
