@@ -5,9 +5,10 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
+import os from 'os';
 
-// Disable default body parsing
-export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Redaction area interface
 interface RedactionArea {
