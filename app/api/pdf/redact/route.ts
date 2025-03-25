@@ -18,7 +18,7 @@ interface RedactionArea {
   height: number;
 }
 
-/ Function to parse form data with files
+/// Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
   return new Promise((resolve, reject) => {
     const form = new formidable.IncomingForm({

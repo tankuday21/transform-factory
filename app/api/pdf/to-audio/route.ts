@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Parse form data from the request
-async function parseForm(req: NextRequest) {
+async function parseto-audioForm(req: NextRequest) {
   const formData = await req.formData();
   
   const file = formData.get('file') as File;
@@ -132,7 +132,7 @@ async function convertTextToSpeech(
 export async function POST(req: NextRequest) {
   try {
     // Parse form data
-    const { file, voice, speed, language, quality, pageRange } = await parseForm(req);
+    const { file, voice, speed, language, quality, pageRange } = await parseto-audioForm(req);
     
     // Check if file is provided
     if (!file) {

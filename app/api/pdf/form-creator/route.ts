@@ -22,7 +22,7 @@ interface FormField {
 }
 
 // Parse form data from the request
-async function parseForm(req: NextRequest) {
+async function parseform-creatorForm(req: NextRequest) {
   const formData = await req.formData();
   
   const baseFile = formData.get('baseFile') as File | null;
@@ -52,7 +52,7 @@ async function parseForm(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Parse form data
-    const { baseFile, formFields, pageSize, orientation, title } = await parseForm(req);
+    const { baseFile, formFields, pageSize, orientation, title } = await parseform-creatorForm(req);
     
     // Create a temporary directory to store files
     const tempDir = path.join(os.tmpdir(), 'pdf-form-creator-' + Date.now());

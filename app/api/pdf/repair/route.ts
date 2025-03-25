@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Parse form data from the request
-async function parseForm(req: NextRequest) {
+async function parserepairForm(req: NextRequest) {
   const formData = await req.formData();
   
   const file = formData.get('file') as File;
@@ -28,7 +28,7 @@ async function parseForm(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Parse form data
-    const { file, repairLevel, recoverImages, recoverFonts } = await parseForm(req);
+    const { file, repairLevel, recoverImages, recoverFonts } = await parserepairForm(req);
     
     // Check if file is provided
     if (!file) {

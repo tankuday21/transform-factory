@@ -11,7 +11,7 @@ import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/ Function to parse form data including file uploads
+/// Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;

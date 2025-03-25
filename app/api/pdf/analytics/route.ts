@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Parse the form data
-async function parseForm(req: NextRequest) {
+async function parseAnalyticsForm(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const startTime = performance.now();
     
     // Parse form data
-    const { file } = await parseForm(req);
+    const { file } = await parseAnalyticsForm(req);
     
     // Create temporary directory for file processing
     const tempDir = path.join(os.tmpdir(), 'pdf-analytics-' + Date.now());

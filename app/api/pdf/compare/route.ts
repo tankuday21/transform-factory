@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Parse form data from the request
-async function parseForm(req: NextRequest) {
+async function parseCompareForm(req: NextRequest) {
   const formData = await req.formData();
   
   const file1 = formData.get('file1') as File;
@@ -28,7 +28,7 @@ async function parseForm(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Parse form data
-    const { file1, file2, comparisonMode, highlightChanges } = await parseForm(req);
+    const { file1, file2, comparisonMode, highlightChanges } = await parseCompareForm(req);
     
     // Check if both files are provided
     if (!file1 || !file2) {

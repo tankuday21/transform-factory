@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 
 const execPromise = util.promisify(exec);
 
-/ Function to parse form data including file uploads
+/// Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;
