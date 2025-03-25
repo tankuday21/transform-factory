@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { FiUploadCloud, FiDownload, FiX, FiCheck } from 'react-icons/fi';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/app/components/ui/card';
 
 const SignPDFPage = () => {
   // State for file handling

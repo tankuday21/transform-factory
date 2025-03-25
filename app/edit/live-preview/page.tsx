@@ -5,7 +5,7 @@ import { FiUpload, FiFile, FiDownload, FiEdit, FiSliders, FiTrash2, FiCheck, FiI
 import dynamic from 'next/dynamic';
 
 // Dynamically import the PDF viewer with no SSR
-const PDFViewer = dynamic(() => import('@/components/PDFViewer'), { ssr: false });
+const PDFViewer = dynamic(() => import('@/app/components/PDFViewer'), { ssr: false });
 
 interface Watermark {
   text: string;
