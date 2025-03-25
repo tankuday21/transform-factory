@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import * as pdfjs from 'pdfjs-dist';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf';
 import { createCanvas } from 'canvas';
 import JSZip from 'jszip';
 import { parseSimpleForm } from '@/app/lib/parse-form';
 
 // Set up the worker for pdf.js
-const pdfjsWorker = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.js');
 if (typeof window === 'undefined') {
+  const pdfjsWorker = require('pdfjs-dist/legacy/build/pdf.worker.entry');
   pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
 

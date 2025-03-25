@@ -30,7 +30,7 @@ export default function SplitPDFPage() {
       const arrayBuffer = await file.arrayBuffer()
       
       // Use pdfjsLib to get the page count
-      const pdfjsLib = await import('pdfjs-dist')
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf')
       pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
       
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
