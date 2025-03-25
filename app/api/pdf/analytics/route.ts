@@ -6,7 +6,8 @@ import * as os from 'os';
 import { PDFDocument } from 'pdf-lib';
 
 // Configuration for the API route
-export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Parse the form data
 async function parseForm(req: NextRequest) {

@@ -7,7 +7,8 @@ import * as formidable from 'formidable';
 import { PassThrough } from 'stream';
 
 // Disable default body parsing
-export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Form field interface
 interface FormField {
