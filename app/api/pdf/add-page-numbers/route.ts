@@ -9,7 +9,6 @@ import { PassThrough } from 'stream';
 // Route Handler Configuration
 export const runtime = 'nodejs'; // Using nodejs runtime for file system operations
 export const dynamic = 'force-dynamic'; // Ensure the route is always dynamic
-export const bodyParser = false; // Disable automatic body parsing for form data
 
 // Function to parse form data with files
 const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
