@@ -3,9 +3,12 @@ import { PDFDocument } from 'pdf-lib';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 
 // Disable body parser, we'll handle the form data manually
-export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Function to parse form data including file uploads
 const parseForm = async (req: NextRequest) => {

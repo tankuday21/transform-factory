@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
+import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import * as os from 'os';
 import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 
-export const runtime = 'nodejs';\nexport const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Helper function to parse form data
 async function parseForm(req: NextRequest) {
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Create temporary directory
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-'));
+    const tmpDir = await mkdir(os.tmpdir(), { recursive: true });
     
     try {
       // Create a new PDF document
