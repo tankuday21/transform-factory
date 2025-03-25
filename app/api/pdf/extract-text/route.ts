@@ -16,17 +16,17 @@ if (typeof window === 'undefined') {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/// Function to parse form data including file uploads
-const parseForm = async (req: NextRequest) => {
+// Local function to parse form data
+const parseExtractTextForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;
   const pageRange = formData.get('pageRange') as string;
-  const format = formData.get('format') as string;
+  const format = formData.get('format') as string || 'plain';
 
   return {
     pdf,
     pageRange: pageRange || 'all',
-    format: format || 'text', // 'text' or 'json'
+    format: format || 'plain', // 'plain' or 'structured'
   };
 };
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the form data
-    const { pdf, pageRange, format } = await parseForm(req);
+    const { pdf, pageRange, format } = await parseExtractTextForm(req);
 
     // Check if PDF file is provided
     if (!pdf) {

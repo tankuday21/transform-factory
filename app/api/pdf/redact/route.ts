@@ -5,6 +5,8 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import os from 'os';
 import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
+import formidable from 'formidable';
+import { PassThrough } from 'stream';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,11 +21,11 @@ interface RedactionArea {
 }
 
 /// Function to parse form data with files
-const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
+const parseRedactForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
   return new Promise((resolve, reject) => {
     const form = new formidable.IncomingForm({
       multiples: true,
-      maxFileSize: 20 * 1024 * 1024, // 20MB
+      maxFileSize: 10 * 1024 * 1024, // 10MB
     });
 
     req.arrayBuffer().then((arrayBuffer) => {
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the form data
-    const { fields, files } = await parseForm(req);
+    const { fields, files } = await parseRedactForm(req);
     
     // Get the uploaded PDF file
     const pdfFile = Array.isArray(files.pdf) ? files.pdf[0] : files.pdf;

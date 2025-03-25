@@ -5,20 +5,20 @@ import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import os from 'os';
 import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
+import formidable from 'formidable';
+import { Readable, PassThrough } from 'stream';
 
 // Disable default body parsing
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /// Function to parse form data with files
-const parseForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
+const parseMergeImagesForm = async (req: NextRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
   return new Promise((resolve, reject) => {
     const form = new formidable.IncomingForm({
       multiples: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB
     });
 
-    const chunks: Buffer[] = [];
     req.arrayBuffer().then((arrayBuffer) => {
       // Convert arrayBuffer to buffer
       const buffer = Buffer.from(arrayBuffer);
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the form data
-    const { files } = await parseForm(req);
+    const { files } = await parseMergeImagesForm(req);
     
     // Get the file buffers
     const images = Array.isArray(files.images) ? files.images : [files.images];

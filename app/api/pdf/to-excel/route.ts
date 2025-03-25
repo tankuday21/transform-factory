@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /// Function to parse form data including file uploads
-const parseForm = async (req: NextRequest) => {
+const parseToExcelForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;
   const quality = formData.get('quality') as string;
@@ -20,7 +20,7 @@ const parseForm = async (req: NextRequest) => {
 
   return {
     pdf,
-    quality: quality || 'medium', // 'low', 'medium', 'high'
+    quality: quality || 'standard', // standard, high, or best
     pageRange: pageRange || 'all',
   };
 };
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the form data
-    const { pdf, quality, pageRange } = await parseForm(req);
+    const { pdf, quality, pageRange } = await parseToExcelForm(req);
 
     // Check if PDF file is provided
     if (!pdf) {
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       
       // Create header row based on "quality" (just for demonstration)
       const headerRow = ['Column A', 'Column B', 'Column C'];
-      if (quality === 'medium' || quality === 'high') {
+      if (quality === 'standard' || quality === 'high') {
         headerRow.push('Column D');
       }
       if (quality === 'high') {
@@ -115,10 +115,10 @@ export async function POST(req: NextRequest) {
       worksheetData.push(headerRow);
       
       // Add some sample data rows
-      const numRows = 5 + (quality === 'high' ? 5 : (quality === 'medium' ? 3 : 0));
+      const numRows = 5 + (quality === 'high' ? 5 : (quality === 'standard' ? 3 : 0));
       for (let i = 1; i <= numRows; i++) {
         const row = [`A${i}`, `B${i}`, `C${i}`];
-        if (quality === 'medium' || quality === 'high') {
+        if (quality === 'standard' || quality === 'high') {
           row.push(`D${i}`);
         }
         if (quality === 'high') {

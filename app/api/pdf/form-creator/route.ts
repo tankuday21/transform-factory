@@ -21,11 +21,10 @@ interface FormField {
   options?: string[]; // For dropdown fields
 }
 
-// Parse form data from the request
-async function parseform-creatorForm(req: NextRequest) {
+// Local function to parse form data
+const parseFormCreatorForm = async (req: NextRequest) => {
   const formData = await req.formData();
-  
-  const baseFile = formData.get('baseFile') as File | null;
+  const pdf = formData.get('pdf') as File;
   const formFieldsJson = formData.get('formFields') as string;
   const pageSize = formData.get('pageSize') as string || 'a4';
   const orientation = formData.get('orientation') as string || 'portrait';
@@ -34,25 +33,25 @@ async function parseform-creatorForm(req: NextRequest) {
   // Parse the form fields JSON
   let formFields: FormField[] = [];
   try {
-    formFields = JSON.parse(formFieldsJson);
+    formFields = formFieldsJson ? JSON.parse(formFieldsJson) : [];
   } catch (error) {
     console.error('Error parsing form fields JSON:', error);
     throw new Error('Invalid form fields data');
   }
-  
+
   return {
-    baseFile,
+    pdf,
     formFields,
     pageSize,
     orientation,
     title,
   };
-}
+};
 
 export async function POST(req: NextRequest) {
   try {
     // Parse form data
-    const { baseFile, formFields, pageSize, orientation, title } = await parseform-creatorForm(req);
+    const { pdf, formFields, pageSize, orientation, title } = await parseFormCreatorForm(req);
     
     // Create a temporary directory to store files
     const tempDir = path.join(os.tmpdir(), 'pdf-form-creator-' + Date.now());
@@ -62,10 +61,10 @@ export async function POST(req: NextRequest) {
       // Create a new PDF or load the base file if provided
       let pdfDoc;
       
-      if (baseFile) {
+      if (pdf) {
         // If a base file is provided, load it
-        const baseFilePath = path.join(tempDir, baseFile.name);
-        await fs.writeFile(baseFilePath, Buffer.from(await baseFile.arrayBuffer()));
+        const baseFilePath = path.join(tempDir, pdf.name);
+        await fs.writeFile(baseFilePath, Buffer.from(await pdf.arrayBuffer()));
         const baseFileBuffer = await fs.readFile(baseFilePath);
         pdfDoc = await PDFDocument.load(baseFileBuffer);
       } else {
@@ -203,8 +202,8 @@ export async function POST(req: NextRequest) {
       const pdfBytes = await pdfDoc.save();
       
       // Clean up temporary files if a base file was provided
-      if (baseFile) {
-        const baseFilePath = path.join(tempDir, baseFile.name);
+      if (pdf) {
+        const baseFilePath = path.join(tempDir, pdf.name);
         await fs.unlink(baseFilePath);
       }
       

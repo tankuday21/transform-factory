@@ -2,19 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
+import { exec } from 'child_process';
+import util from 'util';
 import { PDFDocument } from 'pdf-lib';
-import { parseForm, readFileAsBuffer } from '@/app/lib/parse-form';
+import { parseForm } from '@/app/lib/parse-form';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Parse form data from the request
-async function parseto-audioForm(req: NextRequest) {
+async function parseToAudioForm(req: NextRequest) {
   const formData = await req.formData();
   
   const file = formData.get('file') as File;
-  const voice = formData.get('voice') as string || 'default';
-  const speed = formData.get('speed') as string || 'normal';
+  const voice = formData.get('voice') as string || 'en-US-Neural2-F';
+  const speed = formData.get('speed') as string || '1.0';
   const language = formData.get('language') as string || 'en';
   const quality = formData.get('quality') as string || 'standard';
   const pageRange = formData.get('pageRange') as string || 'all';
@@ -132,7 +134,7 @@ async function convertTextToSpeech(
 export async function POST(req: NextRequest) {
   try {
     // Parse form data
-    const { file, voice, speed, language, quality, pageRange } = await parseto-audioForm(req);
+    const { file, voice, speed, language, quality, pageRange } = await parseToAudioForm(req);
     
     // Check if file is provided
     if (!file) {

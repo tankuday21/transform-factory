@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 const execPromise = util.promisify(exec);
 
 /// Function to parse form data including file uploads
-const parseForm = async (req: NextRequest) => {
+const parseToPowerpointForm = async (req: NextRequest) => {
   const formData = await req.formData();
   const pdf = formData.get('pdf') as File;
   const quality = formData.get('quality') as string;
@@ -23,7 +23,7 @@ const parseForm = async (req: NextRequest) => {
 
   return {
     pdf,
-    quality: quality || 'high',
+    quality: quality || 'standard', // standard, high, or best
     pageRange: pageRange || 'all',
     includeNotes: includeNotes === 'true',
   };
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the form data
-    const { pdf, quality, pageRange, includeNotes } = await parseForm(req);
+    const { pdf, quality, pageRange, includeNotes } = await parseToPowerpointForm(req);
 
     // Check if PDF file is provided
     if (!pdf) {
